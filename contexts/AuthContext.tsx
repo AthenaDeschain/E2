@@ -8,6 +8,7 @@ interface AuthContextType {
     signup: (name: string, email: string, password_unused: string) => Promise<void>;
     logout: () => void;
     isLoading: boolean;
+    setUser?: React.Dispatch<React.SetStateAction<User | null>>; // For profile updates
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,9 +18,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const currentUser = authService.getCurrentUser();
-        setUser(currentUser);
-        setIsLoading(false);
+        const verify = async () => {
+            try {
+                const verifiedUser = await authService.verifySession();
+                setUser(verifiedUser);
+            } catch (error) {
+                console.error("Session verification failed", error);
+                setUser(null);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        verify();
     }, []);
 
     const login = async (email: string, password_unused: string) => {
@@ -28,19 +38,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const signup = async (name: string, email: string, password_unused: string) => {
-        const newUser = await authService.signup(name, email, password_unused);
-        setUser(newUser);
+        const signedUpUser = await authService.signup(name, email, password_unused);
+        setUser(signedUpUser);
     };
 
     const logout = () => {
         authService.logout();
         setUser(null);
     };
-    
-    const value = { user, login, signup, logout, isLoading };
 
     return (
-        <AuthContext.Provider value={value}>
+        <AuthContext.Provider value={{ user, login, signup, logout, isLoading, setUser }}>
             {children}
         </AuthContext.Provider>
     );

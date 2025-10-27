@@ -1,8 +1,10 @@
-import React, { useState, useMemo } from 'react';
-import { mockProjects } from '../data/mockData';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Project } from '../types';
 import Tooltip from './common/Tooltip';
 import { useAuth } from '../contexts/AuthContext';
+import apiService from '../services/apiService';
+import LoadingSpinner from './common/LoadingSpinner';
+import CreateProjectModal from './modals/CreateProjectModal';
 
 const ProgressBar: React.FC<{ progress: number }> = ({ progress }) => (
     <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
@@ -82,88 +84,132 @@ const ProjectCard: React.FC<{ project: Project }> = ({ project }) => (
 );
 
 const Projects: React.FC = () => {
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     const [tagFilter, setTagFilter] = useState('All');
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const { user } = useAuth();
 
-    const userProjects = useMemo(() => {
-        if (!user) return [];
-        return mockProjects.filter(project => 
-            project.members.some(member => member.handle === user.handle)
-        );
+    useEffect(() => {
+        const fetchProjects = async () => {
+            if (!user) {
+                setIsLoading(false);
+                return;
+            };
+            try {
+                setIsLoading(true);
+                setError(null);
+                const fetchedProjects = await apiService<Project[]>('/projects/mine'); 
+                setProjects(fetchedProjects);
+            } catch (err) {
+                setError("Failed to load your projects. The backend might be offline.");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchProjects();
     }, [user]);
 
-    const allTags = useMemo(() => ['All', ...Array.from(new Set(userProjects.flatMap(p => p.tags)))], [userProjects]);
+    const handleProjectCreated = (newProject: Project) => {
+        setProjects(prevProjects => [newProject, ...prevProjects]);
+        setIsCreateModalOpen(false);
+    };
+
+    const allTags = useMemo(() => ['All', ...Array.from(new Set(projects.flatMap(p => p.tags)))], [projects]);
     
     const filteredProjects = useMemo(() => {
-        return userProjects.filter(project => {
+        return projects.filter(project => {
             const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) || project.description.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesStatus = statusFilter === 'All' || project.status === statusFilter;
             const matchesTag = tagFilter === 'All' || project.tags.includes(tagFilter);
             return matchesSearch && matchesStatus && matchesTag;
         });
-    }, [userProjects, searchTerm, statusFilter, tagFilter]);
+    }, [projects, searchTerm, statusFilter, tagFilter]);
+
+    const renderContent = () => {
+        if (isLoading) {
+            return <div className="py-16"><LoadingSpinner /></div>;
+        }
+        if (error) {
+            return <div className="text-center py-16 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg">{error}</div>;
+        }
+        if (filteredProjects.length > 0) {
+            return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredProjects.map(project => (
+                        <ProjectCard key={project.id} project={project} />
+                    ))}
+                </div>
+            );
+        }
+        return (
+            <div className="text-center py-16 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
+                <svg className="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                </svg>
+                <h3 className="mt-2 text-xl font-medium text-slate-900 dark:text-slate-200">No projects found</h3>
+                <p className="mt-1 text-slate-500 dark:text-slate-400">You are not a member of any projects, or your search filters are too restrictive.</p>
+            </div>
+        );
+    }
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8">
-            <div className="max-w-7xl mx-auto">
-                <div className="md:flex md:items-center md:justify-between mb-8">
-                    <div>
-                        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">My Projects</h1>
-                        <p className="mt-2 text-slate-600 dark:text-slate-400">Manage your collaborative research and track your contributions.</p>
+        <>
+            {isCreateModalOpen && (
+                <CreateProjectModal 
+                    onClose={() => setIsCreateModalOpen(false)}
+                    onProjectCreated={handleProjectCreated}
+                />
+            )}
+            <div className="p-4 sm:p-6 lg:p-8">
+                <div className="max-w-7xl mx-auto">
+                    <div className="md:flex md:items-center md:justify-between mb-8">
+                        <div>
+                            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">My Projects</h1>
+                            <p className="mt-2 text-slate-600 dark:text-slate-400">Manage your collaborative research and track your contributions.</p>
+                        </div>
+                        <button onClick={() => setIsCreateModalOpen(true)} className="mt-4 md:mt-0 w-full md:w-auto inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-slate-900 transition-colors">
+                            Start a New Project
+                        </button>
                     </div>
-                    <button className="mt-4 md:mt-0 w-full md:w-auto inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-slate-900 transition-colors">
-                        Start a New Project
-                    </button>
+                    
+                    <div className="mb-6 p-4 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <input
+                                type="text"
+                                placeholder="Search your projects..."
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                className="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md"
+                            />
+                            <select
+                                value={statusFilter}
+                                onChange={e => setStatusFilter(e.target.value)}
+                                className="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md"
+                            >
+                                <option>All</option>
+                                <option>Recruiting</option>
+                                <option>In Progress</option>
+                                <option>Completed</option>
+                            </select>
+                             <select
+                                value={tagFilter}
+                                onChange={e => setTagFilter(e.target.value)}
+                                className="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md"
+                            >
+                                {allTags.map(tag => <option key={tag}>{tag}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    {renderContent()}
+
                 </div>
-                
-                <div className="mb-6 p-4 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <input
-                            type="text"
-                            placeholder="Search your projects..."
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            className="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md"
-                        />
-                        <select
-                            value={statusFilter}
-                            onChange={e => setStatusFilter(e.target.value)}
-                            className="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md"
-                        >
-                            <option>All</option>
-                            <option>Recruiting</option>
-                            <option>In Progress</option>
-                            <option>Completed</option>
-                        </select>
-                         <select
-                            value={tagFilter}
-                            onChange={e => setTagFilter(e.target.value)}
-                            className="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md"
-                        >
-                            {allTags.map(tag => <option key={tag}>{tag}</option>)}
-                        </select>
-                    </div>
-                </div>
-                
-                {filteredProjects.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredProjects.map(project => (
-                            <ProjectCard key={project.id} project={project} />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="text-center py-16 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
-                        <svg className="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                            <path vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-                        </svg>
-                        <h3 className="mt-2 text-xl font-medium text-slate-900 dark:text-slate-200">No projects found</h3>
-                        <p className="mt-1 text-slate-500 dark:text-slate-400">Try adjusting your search or filter criteria.</p>
-                    </div>
-                )}
             </div>
-        </div>
+        </>
     );
 };
 

@@ -86,7 +86,8 @@ const Workbench: React.FC = () => {
                 input = paperContent;
                 apiCall = updateLanguage(input, audience);
                 break;
-            case WorkbenchTool.REVIEW:
+            // fix: Changed WorkbenchTool.REVIEW to match SUB_TOOLS constant
+            case "Review":
                 input = paperContent;
                 apiCall = performRigorousReview(input, audience);
                 break;
@@ -119,7 +120,7 @@ const Workbench: React.FC = () => {
 
     }, [activeSubTool, paperContent, researchInput, audience]);
     
-    const showAudienceToggle = activeSubTool === WorkbenchTool.LANGUAGE || activeSubTool === WorkbenchTool.REVIEW;
+    const showAudienceToggle = activeSubTool === WorkbenchTool.LANGUAGE || activeSubTool.toString() === "Review";
 
     return (
         <div className="flex flex-col lg:flex-row h-full bg-slate-50 dark:bg-slate-900">
@@ -175,7 +176,7 @@ const Workbench: React.FC = () => {
                     <div className="flex space-x-1">
                         {SUB_TOOLS.map(tool => (
                              <Tooltip key={tool.name} tip={tool.description} position="bottom">
-                                <button onClick={() => setActiveSubTool(tool.name)} className={`flex-1 flex items-center justify-center p-2 rounded-md text-sm font-medium transition-colors ${activeSubTool === tool.name ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow' : 'text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}>
+                                <button onClick={() => setActiveSubTool(tool.name as WorkbenchTool)} className={`flex-1 flex items-center justify-center p-2 rounded-md text-sm font-medium transition-colors ${activeSubTool === tool.name ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow' : 'text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}>
                                     {tool.icon}
                                     <span className="ml-2 hidden sm:inline">{tool.name}</span>
                                 </button>

@@ -1,52 +1,45 @@
-import { mockUsers, addUser } from '../data/mockData';
 import { User } from '../types';
+import apiService from './apiService';
 
-const USER_SESSION_KEY = 'eureka_user_handle';
+const TOKEN_KEY = 'eureka_jwt';
+
+interface AuthResponse {
+    token: string;
+    user: User;
+}
 
 export const authService = {
     login: async (email: string, password_unused: string): Promise<User> => {
-        // In a real app, you'd validate the password. Here we just find by email.
-        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-        const user = Object.values(mockUsers).find(u => u.email === email);
-        if (user) {
-            localStorage.setItem(USER_SESSION_KEY, user.handle);
-            return Promise.resolve(user);
-        } else {
-            return Promise.reject(new Error('Invalid email or password'));
-        }
+        const { token, user } = await apiService<AuthResponse>('/auth/login', 'POST', { email, password: password_unused });
+        localStorage.setItem(TOKEN_KEY, token);
+        return user;
     },
 
     signup: async (name: string, email: string, password_unused: string): Promise<User> => {
-        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-        if (Object.values(mockUsers).some(u => u.email === email)) {
-            return Promise.reject(new Error('User with this email already exists'));
-        }
-        const handle = name.toLowerCase().replace(/\s+/g, '_') + `_${Date.now() % 1000}`;
-        const newUser: User = {
-            name,
-            email,
-            password: 'mock_password', // In a real app, you'd hash this.
-            handle,
-            avatarUrl: `https://i.pravatar.cc/150?u=${handle}`,
-            title: 'New Member',
-            role: 'Civilian Scientist',
-            stats: { projects: 0, posts: 0, contributions: 0 },
-        };
-        addUser(newUser); // Add to our mock DB
-        localStorage.setItem(USER_SESSION_KEY, newUser.handle);
-        return Promise.resolve(newUser);
+        const { token, user } = await apiService<AuthResponse>('/auth/signup', 'POST', { name, email, password: password_unused });
+        localStorage.setItem(TOKEN_KEY, token);
+        return user;
     },
 
     logout: (): void => {
-        localStorage.removeItem(USER_SESSION_KEY);
+        localStorage.removeItem(TOKEN_KEY);
+        // In a real app, you might also want to call a '/api/auth/logout' endpoint 
+        // to invalidate the token on the server side if you have a token blacklist.
     },
 
-    getCurrentUser: (): User | null => {
-        const handle = localStorage.getItem(USER_SESSION_KEY);
-        if (handle) {
-            const user = Object.values(mockUsers).find(u => u.handle === handle);
-            return user || null;
+    verifySession: async (): Promise<User | null> => {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) {
+            return null;
         }
-        return null;
+        try {
+            // This endpoint would validate the token and return the associated user
+            const user = await apiService<User>('/auth/me', 'GET');
+            return user;
+        } catch (error) {
+            console.error("Session verification failed:", error);
+            localStorage.removeItem(TOKEN_KEY); // Token is invalid or expired, remove it
+            return null;
+        }
     }
 };
