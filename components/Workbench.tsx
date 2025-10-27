@@ -86,8 +86,7 @@ const Workbench: React.FC = () => {
                 input = paperContent;
                 apiCall = updateLanguage(input, audience);
                 break;
-            // fix: Changed WorkbenchTool.REVIEW to match SUB_TOOLS constant
-            case "Review":
+            case WorkbenchTool.REVIEW:
                 input = paperContent;
                 apiCall = performRigorousReview(input, audience);
                 break;
@@ -120,7 +119,7 @@ const Workbench: React.FC = () => {
 
     }, [activeSubTool, paperContent, researchInput, audience]);
     
-    const showAudienceToggle = activeSubTool === WorkbenchTool.LANGUAGE || activeSubTool.toString() === "Review";
+    const showAudienceToggle = activeSubTool === WorkbenchTool.LANGUAGE || activeSubTool === WorkbenchTool.REVIEW;
 
     return (
         <div className="flex flex-col lg:flex-row h-full bg-slate-50 dark:bg-slate-900">

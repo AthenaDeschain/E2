@@ -71,7 +71,8 @@ const ProjectCard: React.FC<{ project: Project }> = ({ project }) => (
                             className="inline-block h-8 w-8 rounded-full ring-2 ring-white dark:ring-slate-800"
                             src={member.avatarUrl}
                             alt={member.name}
-                            title={`${member.name} (${member.role})`}
+                            // FIX: Changed member.role to member.projectRole to use the correct property for the project-specific role.
+                            title={`${member.name} (${member.projectRole})`}
                         />
                     ))}
                 </div>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import AuthPage from './pages/AuthPage';
-import { Page } from './types';
+import { Page, CommunityCategory } from './types';
 import { NAV_ITEMS } from './constants';
 
 import Dashboard from './components/Dashboard';
@@ -13,16 +13,29 @@ import KnowledgeBase from './components/KnowledgeBase';
 import Events from './components/Events';
 import Funding from './components/Funding';
 import Tooltip from './components/common/Tooltip';
+import CommunityFeed from './components/CommunityFeed';
+import GlobalFeed from './components/GlobalFeed';
 
 const App: React.FC = () => {
     const { user, logout, isLoading } = useAuth();
     const [currentPage, setCurrentPage] = useState<Page>(Page.FEED);
+    const [selectedCommunity, setSelectedCommunity] = useState<CommunityCategory | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+    const handlePageChange = (page: Page) => {
+        setSelectedCommunity(null); // Reset sub-navigation when changing main page
+        setCurrentPage(page);
+    };
 
     const renderPage = () => {
         switch (currentPage) {
             case Page.FEED:
-                return <Dashboard />;
+                return <GlobalFeed />;
+            case Page.COMMUNITIES:
+                 if (selectedCommunity) {
+                    return <CommunityFeed category={selectedCommunity} onBack={() => setSelectedCommunity(null)} />;
+                }
+                return <Dashboard onSelectCommunity={setSelectedCommunity} />;
             case Page.PROFILE:
                 return <Profile />;
             case Page.MY_PROJECTS:
@@ -38,7 +51,7 @@ const App: React.FC = () => {
             case Page.FUNDING:
                 return <Funding />;
             default:
-                return <Dashboard />;
+                return <GlobalFeed />;
         }
     };
 
@@ -71,7 +84,7 @@ const App: React.FC = () => {
                             <h3 className={`px-2 py-1 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider ${!isSidebarOpen && 'text-center'}`}>{isSidebarOpen ? group.group : group.group.substring(0,1)}</h3>
                             {group.items.map(item => (
                                 <Tooltip key={item.name} tip={item.name} position="right" >
-                                    <button onClick={() => setCurrentPage(item.name)} className={`w-full flex items-center p-3 rounded-md transition-colors ${currentPage === item.name ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300' : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
+                                    <button onClick={() => handlePageChange(item.name)} className={`w-full flex items-center p-3 rounded-md transition-colors ${currentPage === item.name ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300' : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
                                         {item.icon}
                                         <span className={`ml-4 font-medium ${!isSidebarOpen && 'hidden'}`}>{item.name}</span>
                                     </button>

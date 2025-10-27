@@ -1,7 +1,9 @@
 
+
 export enum Page {
     PROFILE = 'Profile',
     FEED = 'Feed',
+    COMMUNITIES = 'Communities',
     MY_PROJECTS = 'My Projects',
     BOOKMARKS = 'Bookmarks',
     TOOLS = 'Tools',
@@ -67,7 +69,7 @@ export interface User {
 }
 
 export interface ProjectMember extends User {
-    role: 'Lead' | 'Collaborator' | 'Advisor';
+    projectRole: 'Lead' | 'Collaborator' | 'Advisor';
 }
 
 export interface Project {
@@ -119,4 +121,28 @@ export interface Notification {
     isRead: boolean;
     link: string; // e.g., to the post or project
     sender: User;
+}
+
+// --- Service Payload Types ---
+
+export interface CreateProjectPayload {
+    title: string;
+    description: string;
+    tags: string[];
+    seekingCivilianScientists: boolean;
+    isSeekingFunding: boolean;
+}
+
+export interface CreateEventPayload {
+    title: string;
+    date: string; // ISO 8601 format
+    location: string;
+    description: string;
+    isOnline: boolean;
+}
+
+export interface UpdateUserPayload {
+    name?: string;
+    bio?: string;
+    interests?: string[];
 }

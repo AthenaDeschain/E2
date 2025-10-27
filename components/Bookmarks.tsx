@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Post } from '../types';
 import { postService } from '../services/postService';
 import LoadingSpinner from './common/LoadingSpinner';
-import { PostCard } from './Dashboard';
+import { PostCard } from './posts/PostCard';
 
 
 const Bookmarks: React.FC = () => {

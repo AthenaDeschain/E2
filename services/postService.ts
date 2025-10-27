@@ -17,6 +17,12 @@ interface ToggleBookmarkResponse {
 }
 
 export const postService = {
+    getAllPosts: (): Promise<Post[]> => {
+        return apiService<Post[]>('/posts');
+    },
+    getPostsByCategory: (category: CommunityCategory): Promise<Post[]> => {
+        return apiService<Post[]>(`/posts/category/${category}`);
+    },
     createPost: (data: CreatePostPayload): Promise<Post> => {
         return apiService<Post>('/posts', 'POST', data);
     },
