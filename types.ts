@@ -1,5 +1,6 @@
 
 
+
 export enum Page {
     PROFILE = 'Profile',
     FEED = 'Feed',
@@ -122,6 +123,13 @@ export interface Notification {
     link: string; // e.g., to the post or project
     sender: User;
 }
+
+// --- WebSocket Payload Types ---
+export interface NewCommentPayload {
+    postId: string;
+    comment: Comment;
+}
+
 
 // --- Service Payload Types ---
 

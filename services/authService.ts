@@ -21,10 +21,16 @@ export const authService = {
         return user;
     },
 
-    logout: (): void => {
-        localStorage.removeItem(TOKEN_KEY);
-        // In a real app, you might also want to call a '/api/auth/logout' endpoint 
-        // to invalidate the token on the server side if you have a token blacklist.
+    logout: async (): Promise<void> => {
+        // Call the backend to invalidate the token on the server-side (e.g., add to a blacklist).
+        // This is important for security. We'll proceed with client-side cleanup even if this fails.
+        try {
+            await apiService('/auth/logout', 'POST');
+        } catch (error) {
+            console.warn("Failed to invalidate token on server during logout. This can happen if the server is offline.", error);
+        } finally {
+            localStorage.removeItem(TOKEN_KEY);
+        }
     },
 
     verifySession: async (): Promise<User | null> => {

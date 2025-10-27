@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Post, CommunityCategory } from '../types';
 import { COMMUNITY_CATEGORIES } from '../constants';
 import { postService } from '../services/postService';
 import LoadingSpinner from './common/LoadingSpinner';
 import { PostCard } from './posts/PostCard';
 import CreatePost from './posts/CreatePost';
+import { useSocket } from '../contexts/SocketContext';
 
 // --- CommunityFeed Component ---
 interface CommunityFeedProps {
@@ -16,6 +17,7 @@ const CommunityFeed: React.FC<CommunityFeedProps> = ({ category, onBack }) => {
     const [posts, setPosts] = useState<Post[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const socket = useSocket();
 
     const categoryInfo = COMMUNITY_CATEGORIES.find(c => c.name === category);
 
@@ -35,10 +37,20 @@ const CommunityFeed: React.FC<CommunityFeedProps> = ({ category, onBack }) => {
         fetchPosts();
     }, [category]);
 
-    const handleNewPost = (newPost: Post) => {
-        setPosts(prevPosts => [newPost, ...prevPosts]);
-    };
-    
+    const handleRealtimePost = useCallback((newPost: Post) => {
+        // Only add the post if it matches the current category
+        if (newPost.category === category) {
+            setPosts(prevPosts => [newPost, ...prevPosts]);
+        }
+    }, [category]);
+
+    useEffect(() => {
+        socket.subscribe('new_post', handleRealtimePost);
+        return () => {
+            socket.unsubscribe('new_post', handleRealtimePost);
+        };
+    }, [socket, handleRealtimePost]);
+
     const renderContent = () => {
         if (isLoading) {
             return <div className="py-16"><LoadingSpinner /></div>;
@@ -75,7 +87,7 @@ const CommunityFeed: React.FC<CommunityFeedProps> = ({ category, onBack }) => {
                     <p className="mt-2 text-slate-600 dark:text-slate-400">{categoryInfo?.description}</p>
                 </div>
 
-                <CreatePost onNewPost={handleNewPost} category={category} />
+                <CreatePost category={category} />
 
                 <div className="my-8">
                     <div className="relative">

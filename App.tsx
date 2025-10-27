@@ -15,9 +15,10 @@ import Funding from './components/Funding';
 import Tooltip from './components/common/Tooltip';
 import CommunityFeed from './components/CommunityFeed';
 import GlobalFeed from './components/GlobalFeed';
+import Header from './components/layout/Header';
 
 const App: React.FC = () => {
-    const { user, logout, isLoading } = useAuth();
+    const { user, isLoading } = useAuth();
     const [currentPage, setCurrentPage] = useState<Page>(Page.FEED);
     const [selectedCommunity, setSelectedCommunity] = useState<CommunityCategory | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -71,8 +72,8 @@ const App: React.FC = () => {
         <div className="flex h-screen bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200">
             {/* Sidebar */}
             <aside className={`bg-white dark:bg-slate-800/50 border-r border-slate-200 dark:border-slate-700 flex flex-col transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
-                <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
-                    <span className={`font-bold text-2xl text-slate-900 dark:text-white ${!isSidebarOpen && 'hidden'}`}>Eureka²</span>
+                <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 h-16">
+                    <span className={`font-bold text-2xl text-slate-900 dark:text-white ${!isSidebarOpen && 'hidden'}`}>E²</span>
                      <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
                     </button>
@@ -93,23 +94,15 @@ const App: React.FC = () => {
                         </div>
                     ))}
                 </nav>
-
-                 <div className="p-4 border-t border-slate-200 dark:border-slate-700">
-                    <div className="flex items-center">
-                        <img className="h-10 w-10 rounded-full" src={user.avatarUrl} alt={user.name} />
-                        <div className={`ml-3 ${!isSidebarOpen && 'hidden'}`}>
-                            <p className="font-semibold text-slate-800 dark:text-slate-100">{user.name}</p>
-                            <button onClick={logout} className="text-sm text-slate-500 hover:text-blue-600 dark:hover:text-blue-400">Log out</button>
-                        </div>
-                    </div>
-                </div>
-
             </aside>
 
-            {/* Main Content */}
-            <main className="flex-1 overflow-y-auto">
-                {renderPage()}
-            </main>
+            {/* Main Content Wrapper */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+                <Header />
+                <main className="flex-1 overflow-y-auto">
+                    {renderPage()}
+                </main>
+            </div>
         </div>
     );
 };

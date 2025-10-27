@@ -5,13 +5,15 @@ import { postService } from '../../services/postService';
 import { draftPostWithAI } from '../../services/geminiService';
 import { COMMUNITY_CATEGORIES } from '../../constants';
 import LoadingSpinner from '../common/LoadingSpinner';
+import { useToast } from '../../contexts/ToastContext';
 
-const CreatePost: React.FC<{ onNewPost: (post: Post) => void, category?: CommunityCategory }> = ({ onNewPost, category }) => {
+const CreatePost: React.FC<{ category?: CommunityCategory }> = ({ category }) => {
     const { user } = useAuth();
     const [content, setContent] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
+    const { addToast } = useToast();
     
     // If a category is passed as a prop, use it. Otherwise, default to the first category for the selector.
     const [selectedCategory, setSelectedCategory] = useState<CommunityCategory>(category || COMMUNITY_CATEGORIES[0].name);
@@ -21,11 +23,15 @@ const CreatePost: React.FC<{ onNewPost: (post: Post) => void, category?: Communi
     const handleGeneratePost = async () => {
         if (!content.trim()) return;
         setIsGenerating(true);
+        setError(null);
         try {
             const response = await draftPostWithAI(content);
             setContent(response.text);
+            addToast('AI draft generated!', 'info');
         } catch (err: any) {
-            setError(err.message || "Failed to generate post draft.");
+            const errorMessage = err.message || "Failed to generate post draft.";
+            setError(errorMessage);
+            addToast(errorMessage, 'error');
         } finally {
             setIsGenerating(false);
         }
@@ -36,11 +42,13 @@ const CreatePost: React.FC<{ onNewPost: (post: Post) => void, category?: Communi
         setIsLoading(true);
         setError(null);
         try {
-            const newPost = await postService.createPost({ content, category: selectedCategory });
-            onNewPost(newPost);
+            await postService.createPost({ content, category: selectedCategory });
+            addToast('Post created successfully!', 'success');
             setContent('');
         } catch (err: any) {
-            setError(err.message || 'Failed to create post.');
+            const errorMessage = err.message || 'Failed to create post.';
+            setError(errorMessage);
+            addToast(errorMessage, 'error');
         } finally {
             setIsLoading(false);
         }
@@ -73,7 +81,8 @@ const CreatePost: React.FC<{ onNewPost: (post: Post) => void, category?: Communi
                              </select>
                         </div>
                     )}
-                    {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+                    {/* FIX: Corrected typo in error message display */}
+                    {error && <p className="text-red-500 text-sm mt-2">Error: {error}</p>}
                     <div className="flex justify-end items-center mt-3 gap-4">
                         <button 
                             onClick={handleGeneratePost} 

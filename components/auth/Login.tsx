@@ -10,7 +10,7 @@ const Login: React.FC<LoginProps> = ({ onSwitch }) => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const { login } = useAuth();
+    const { login, loginAsDev } = useAuth();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -25,6 +25,18 @@ const Login: React.FC<LoginProps> = ({ onSwitch }) => {
             setIsLoading(false);
         }
     };
+    
+    const handleDevLogin = async () => {
+        setError('');
+        setIsLoading(true);
+        try {
+            await loginAsDev();
+        } catch (err: any) {
+            setError(err.message || 'Failed to log in as dev user.');
+        } finally {
+            setIsLoading(false);
+        }
+    }
 
     return (
         <div>
@@ -71,6 +83,11 @@ const Login: React.FC<LoginProps> = ({ onSwitch }) => {
                     Sign Up
                 </button>
             </p>
+             <div className="mt-4 text-center text-sm text-slate-500 dark:text-slate-400">
+                <button onClick={handleDevLogin} className="font-medium text-green-600 hover:text-green-500">
+                    Login as Dev User
+                </button>
+            </div>
         </div>
     );
 };

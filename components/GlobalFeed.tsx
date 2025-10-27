@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Post } from '../types';
 import { postService } from '../services/postService';
 import LoadingSpinner from './common/LoadingSpinner';
 import { PostCard } from './posts/PostCard';
 import CreatePost from './posts/CreatePost';
+import { useSocket } from '../contexts/SocketContext';
 
 const GlobalFeed: React.FC = () => {
     const [posts, setPosts] = useState<Post[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const socket = useSocket();
 
     useEffect(() => {
         const fetchPosts = async () => {
@@ -26,9 +28,17 @@ const GlobalFeed: React.FC = () => {
         fetchPosts();
     }, []);
 
-    const handleNewPost = (newPost: Post) => {
+    const handleRealtimePost = useCallback((newPost: Post) => {
         setPosts(prevPosts => [newPost, ...prevPosts]);
-    };
+    }, []);
+
+    useEffect(() => {
+        socket.subscribe('new_post', handleRealtimePost);
+        return () => {
+            socket.unsubscribe('new_post', handleRealtimePost);
+        };
+    }, [socket, handleRealtimePost]);
+
 
     const renderContent = () => {
         if (isLoading) {
@@ -62,7 +72,7 @@ const GlobalFeed: React.FC = () => {
                     <p className="mt-2 text-slate-600 dark:text-slate-400">The latest posts from all communities across the platform.</p>
                 </div>
 
-                <CreatePost onNewPost={handleNewPost} />
+                <CreatePost />
 
                 <div className="my-8">
                     <div className="relative">

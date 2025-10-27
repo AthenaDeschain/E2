@@ -1,4 +1,4 @@
-import { User, Project, Post, Event, CommunityCategory, ProjectMember } from '../types';
+import { User, Project, Post, Event, CommunityCategory, ProjectMember, Comment, Notification } from '../types';
 
 export const mockUsers: User[] = [
     {
@@ -93,7 +93,7 @@ export const mockPosts: Post[] = [
         timestamp: '2h ago',
         likes: 128,
         isLiked: true,
-        comments: 15,
+        comments: 2,
         isBookmarked: true,
         category: CommunityCategory.DISCOVERY,
     },
@@ -104,7 +104,7 @@ export const mockPosts: Post[] = [
         timestamp: '5h ago',
         likes: 256,
         isLiked: false,
-        comments: 42,
+        comments: 1,
         isBookmarked: true,
         category: CommunityCategory.INQUIRY,
     },
@@ -115,7 +115,7 @@ export const mockPosts: Post[] = [
         timestamp: '1d ago',
         likes: 77,
         isLiked: false,
-        comments: 9,
+        comments: 0,
         isBookmarked: false,
         category: CommunityCategory.EXPERIMENT,
     },
@@ -126,10 +126,74 @@ export const mockPosts: Post[] = [
         timestamp: '2d ago',
         likes: 98,
         isLiked: true,
-        comments: 21,
+        comments: 0,
         isBookmarked: false,
         category: CommunityCategory.VALIDATE,
     },
+];
+
+export const mockComments: { [postId: string]: Comment[] } = {
+    'post-1': [
+        {
+            id: 'comment-1',
+            author: mockUsers[3],
+            content: 'A groundbreaking paper, Albert! The implications for cosmological models are immense. I have a few questions about your methodology I\'d love to discuss.',
+            timestamp: '1h ago',
+        },
+        {
+            id: 'comment-2',
+            author: mockUsers[0],
+            content: 'Incredible work. This fundamentally changes how we view the universe. Thank you for sharing.',
+            timestamp: '30m ago',
+        }
+    ],
+    'post-2': [
+        {
+            id: 'comment-3',
+            author: mockUsers[1],
+            content: 'The "Wow!" signal remains the most tantalizing piece of evidence, in my opinion. Its characteristics were a near-perfect match for an interstellar transmission.',
+            timestamp: '4h ago',
+        }
+    ]
+};
+
+export const mockNotifications: Notification[] = [
+    {
+        id: 'notif-1',
+        type: 'like',
+        sender: mockUsers[3],
+        content: 'liked your post about TMV virus structure.',
+        timestamp: '1h ago',
+        isRead: false,
+        link: '/posts/post-4'
+    },
+    {
+        id: 'notif-2',
+        type: 'comment',
+        sender: mockUsers[0],
+        content: 'commented on your post: "Incredible work. This fundamentally..."',
+        timestamp: '2h ago',
+        isRead: false,
+        link: '/posts/post-1'
+    },
+    {
+        id: 'notif-3',
+        type: 'project_invite',
+        sender: mockUsers[2],
+        content: 'invited you to collaborate on the project "Mapping the Local Interstellar Medium".',
+        timestamp: '1d ago',
+        isRead: true,
+        link: '/projects/proj-2'
+    },
+    {
+        id: 'notif-4',
+        type: 'mention',
+        sender: mockUsers[1],
+        content: 'mentioned you in a comment: "This reminds me of the work @athena_deschain is doing."',
+        timestamp: '3d ago',
+        isRead: true,
+        link: '/posts/post-1'
+    }
 ];
 
 export const mockEvents: Event[] = [

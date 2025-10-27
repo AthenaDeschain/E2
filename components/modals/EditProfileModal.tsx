@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User } from '../../types';
 import { userService, UpdateUserPayload } from '../../services/userService';
+import { useToast } from '../../contexts/ToastContext';
 
 interface EditProfileModalProps {
     user: User;
@@ -14,6 +15,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onPr
     const [interests, setInterests] = useState((user.interests || []).join(', '));
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { addToast } = useToast();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -28,21 +30,24 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onPr
 
         try {
             const updatedUser = await userService.updateProfile(payload);
+            addToast('Profile updated successfully!', 'success');
             onProfileUpdated(updatedUser);
         } catch (err: any) {
-            setError(err.message || 'Failed to update profile.');
+            const errorMessage = err.message || 'Failed to update profile.';
+            setError(errorMessage);
+            addToast(errorMessage, 'error');
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4" onClick={onClose}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="edit-profile-title">
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-lg p-6 relative" onClick={e => e.stopPropagation()}>
-                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" aria-label="Close modal">
                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Edit Profile</h2>
+                <h2 id="edit-profile-title" className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Edit Profile</h2>
                 {error && <p className="bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-md mb-4 text-sm">{error}</p>}
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
