@@ -1,6 +1,6 @@
 import React, { ReactElement } from 'react';
 import { render, RenderOptions, screen, fireEvent, waitFor } from '@testing-library/react';
-import { AuthContext } from './contexts/AuthContext';
+import { AuthContext, AuthContextType } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { SocketContext } from './contexts/SocketContext';
 import { User } from './types';
@@ -20,13 +20,12 @@ const MockSocketProvider: React.FC<{children: React.ReactNode}> = ({ children })
 const createMockAuthProvider = (user: User | null, isLoading: boolean) => {
     // FIX: Return a named FC to help with type inference and fix children prop error
     const MockAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-        const value = {
+        const value: AuthContextType = {
             user,
             isLoading,
             login: jest.fn().mockResolvedValue(undefined),
             signup: jest.fn().mockResolvedValue(undefined),
             logout: jest.fn().mockResolvedValue(undefined),
-            loginAsDev: jest.fn(),
             setUser: jest.fn(),
         };
         return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

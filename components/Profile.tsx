@@ -8,16 +8,23 @@ const Profile: React.FC = () => {
     const { user, setUser } = useAuth();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [stats, setStats] = useState<UserStats | null>(null);
+    const [statsLoading, setStatsLoading] = useState(true);
+    const [statsError, setStatsError] = useState<string | null>(null);
     
     useEffect(() => {
         const fetchStats = async () => {
             if (user) {
                 try {
+                    setStatsLoading(true);
+                    setStatsError(null);
                     const userStats = await apiService<UserStats>('/users/me/stats');
                     setStats(userStats);
                 } catch (error) {
                     console.error("Failed to fetch user stats:", error);
+                    setStatsError("Could not load stats.");
                     setStats(null);
+                } finally {
+                    setStatsLoading(false);
                 }
             }
         };
@@ -34,6 +41,36 @@ const Profile: React.FC = () => {
         }
         setIsEditModalOpen(false);
     };
+
+    const renderStats = () => {
+        if (statsLoading) {
+            return Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-5 text-center animate-pulse">
+                    <div className="h-9 bg-slate-200 dark:bg-slate-700 rounded w-1/4 mx-auto"></div>
+                    <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mx-auto mt-2"></div>
+                </div>
+            ));
+        }
+
+        if (statsError) {
+            return (
+                <div className="col-span-2 md:col-span-4 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg p-5 text-center">
+                    {statsError}
+                </div>
+            )
+        }
+
+        if (stats) {
+            return Object.entries(stats).map(([key, value]) => (
+                <div key={key} className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-5 text-center">
+                    <p className="text-3xl font-bold text-slate-900 dark:text-white">{value}</p>
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 capitalize">{key}</p>
+                </div>
+            ));
+        }
+
+        return null;
+    }
 
     return (
         <>
@@ -68,21 +105,7 @@ const Profile: React.FC = () => {
                     
                     {/* Stats */}
                     <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-6">
-                        {stats ? (
-                             Object.entries(stats).map(([key, value]) => (
-                                <div key={key} className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-5 text-center">
-                                    <p className="text-3xl font-bold text-slate-900 dark:text-white">{value}</p>
-                                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 capitalize">{key}</p>
-                                </div>
-                            ))
-                        ) : (
-                            Array.from({ length: 4 }).map((_, i) => (
-                                <div key={i} className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-5 text-center animate-pulse">
-                                    <div className="h-9 bg-slate-200 dark:bg-slate-700 rounded w-1/4 mx-auto"></div>
-                                    <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mx-auto mt-2"></div>
-                                </div>
-                            ))
-                        )}
+                        {renderStats()}
                     </div>
 
                     {/* Interests and Skills */}

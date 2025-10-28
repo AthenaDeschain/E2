@@ -6,6 +6,3 @@ export const userService = {
         return apiService<User>('/users/me', 'PUT', data);
     },
 };
-
-// FIX: Export the UpdateUserPayload type so it can be imported by components.
-export type { UpdateUserPayload };

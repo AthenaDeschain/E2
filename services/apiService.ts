@@ -1,7 +1,9 @@
 // This service now exclusively interacts with a live backend API.
 // The mock logic has been removed as part of the transition to production.
 
-const API_BASE_URL = '/api';
+// Use an environment variable for the API base URL in production.
+// Fallback to the relative '/api' path for local development with a proxy.
+const API_BASE_URL = process.env.API_URL || '/api';
 
 const apiService = async <T>(
     endpoint: string,
@@ -20,11 +22,12 @@ const apiService = async <T>(
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+        const fullUrl = `${API_BASE_URL}${endpoint}`;
+        const response = await fetch(fullUrl, config);
         
         if (!response.ok) {
             // Try to parse error response from the backend, otherwise throw a generic error.
-            const errorData = await response.json().catch(() => ({ message: `An unknown error occurred on endpoint ${endpoint}` }));
+            const errorData = await response.json().catch(() => ({ message: `Request to ${fullUrl} failed with status ${response.status}. The server's response was not valid JSON. This often happens with configuration errors (e.g., CORS, incorrect API URL) or server crashes.` }));
             throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
         
@@ -35,8 +38,8 @@ const apiService = async <T>(
 
         return await response.json() as T;
     } catch (error: any) {
-        console.error(`API service error on ${method} ${API_BASE_URL}${endpoint}:`, error);
-        // Re-throw the error so it can be caught by the calling function (e.g., in a component's try-catch block).
+        // The calling service (e.g., postService) is responsible for logging and handling the error.
+        // This prevents double-logging and reduces console noise for gracefully-handled errors.
         throw error;
     }
 };

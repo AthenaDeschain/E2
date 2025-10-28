@@ -9,8 +9,7 @@ interface State {
 }
 
 class ErrorBoundary extends Component<Props, State> {
-  // FIX: Use public class field for state to resolve type errors.
-  state: State = { hasError: false };
+  public state: State = { hasError: false };
 
   static getDerivedStateFromError(_: Error): State {
     return { hasError: true };
@@ -37,8 +36,7 @@ class ErrorBoundary extends Component<Props, State> {
         </div>
       );
     }
-    // FIX: The original code's attempt to fix a type issue by destructuring props was causing an error.
-    // Directly returning 'this.props.children' is cleaner and resolves the 'props' not existing error.
+
     return this.props.children;
   }
 }

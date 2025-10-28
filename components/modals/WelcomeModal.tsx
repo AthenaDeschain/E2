@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User } from '../../types';
 import { userService } from '../../services/userService';
 import { useToast } from '../../contexts/ToastContext';
@@ -13,6 +13,45 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ onClose }) => {
     const { addToast } = useToast();
     const [role, setRole] = useState<'Career Scientist' | 'Civilian Scientist'>('Civilian Scientist');
     const [isLoading, setIsLoading] = useState(false);
+    
+    const modalRef = useRef<HTMLDivElement>(null);
+    const selectRef = useRef<HTMLSelectElement>(null);
+
+    useEffect(() => {
+        const modalNode = modalRef.current;
+        if (!modalNode) return;
+
+        selectRef.current?.focus();
+
+        const focusableElements = modalNode.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            // No escape handling as this is a required action, but focus trapping is still important.
+            if (event.key === 'Tab') {
+                if (event.shiftKey) { // Shift+Tab
+                    if (document.activeElement === firstElement) {
+                        lastElement.focus();
+                        event.preventDefault();
+                    }
+                } else { // Tab
+                    if (document.activeElement === lastElement) {
+                        firstElement.focus();
+                        event.preventDefault();
+                    }
+                }
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, []);
 
     const handleSave = async () => {
         if (!user || !setUser) return;
@@ -31,13 +70,14 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ onClose }) => {
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md p-6 relative">
+            <div ref={modalRef} className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-md p-6 relative">
                 <h2 id="welcome-title" className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Welcome to Eureka²!</h2>
                 <p className="text-slate-600 dark:text-slate-400 mb-6">Let's complete your profile. This helps us tailor your experience.</p>
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">How do you identify?</label>
                         <select
+                            ref={selectRef}
                             value={role}
                             onChange={(e) => setRole(e.target.value as any)}
                             className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm"

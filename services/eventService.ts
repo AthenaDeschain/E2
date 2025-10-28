@@ -6,6 +6,3 @@ export const eventService = {
         return apiService<Event>('/events', 'POST', data);
     },
 };
-
-// FIX: Export the CreateEventPayload type so it can be imported by components.
-export type { CreateEventPayload };

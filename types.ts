@@ -1,7 +1,3 @@
-
-
-
-
 export enum Page {
     PROFILE = 'Profile',
     FEED = 'Feed',
@@ -56,7 +52,7 @@ export interface JargonDefinition {
 export interface Checkpoint {
     id: string;
     content: string;
-    timestamp: number;
+    timestamp: string;
     charCount: number;
 }
 

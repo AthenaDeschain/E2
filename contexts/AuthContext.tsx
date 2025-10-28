@@ -2,14 +2,14 @@ import React, { createContext, useState, useContext, useEffect, ReactNode } from
 import { User } from '../types';
 import { authService } from '../services/authService';
 
-interface AuthContextType {
+// Fix: Export the AuthContextType interface so it can be imported in other files like test-utils.tsx.
+export interface AuthContextType {
     user: User | null;
     login: (email: string, password_unused: string) => Promise<void>;
     signup: (name: string, email: string, password_unused: string) => Promise<void>;
     logout: () => Promise<void>; // Changed to return Promise
     isLoading: boolean;
     setUser?: React.Dispatch<React.SetStateAction<User | null>>; // For profile updates
-    loginAsDev: () => void;
 }
 
 // FIX: Export AuthContext to be used in test-utils
@@ -50,18 +50,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(null);
     };
 
-    const loginAsDev = async () => {
-        // This function simulates a login for the dev user, which now requires calling the mock API.
-        try {
-            const devUser = await authService.login('athenaozanich@gmail.com', 'devpassword');
-            setUser(devUser);
-        } catch(error) {
-            console.error("Dev login failed", error);
-        }
-    };
-
     return (
-        <AuthContext.Provider value={{ user, login, signup, logout, isLoading, setUser, loginAsDev }}>
+        <AuthContext.Provider value={{ user, login, signup, logout, isLoading, setUser }}>
             {children}
         </AuthContext.Provider>
     );

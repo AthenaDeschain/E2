@@ -17,14 +17,14 @@ interface ToggleBookmarkResponse {
 }
 
 export const postService = {
-    getAllPosts: (): Promise<Post[]> => {
-        return apiService<Post[]>('/posts');
+    getAllPosts: async (): Promise<Post[]> => {
+        return await apiService<Post[]>('/posts');
     },
-    getPostById: (postId: string): Promise<Post> => {
-        return apiService<Post>(`/posts/${postId}`);
+    getPostById: async (postId: string): Promise<Post> => {
+        return await apiService<Post>(`/posts/${postId}`);
     },
-    getPostsByCategory: (category: CommunityCategory): Promise<Post[]> => {
-        return apiService<Post[]>(`/posts/category/${category}`);
+    getPostsByCategory: async (category: CommunityCategory): Promise<Post[]> => {
+        return await apiService<Post[]>(`/posts/category/${category}`);
     },
     createPost: (data: CreatePostPayload): Promise<Post> => {
         return apiService<Post>('/posts', 'POST', data);
@@ -37,7 +37,7 @@ export const postService = {
         // A single POST endpoint is used to both bookmark and un-bookmark
         return apiService(`/posts/${postId}/bookmark`, 'POST');
     },
-    getBookmarkedPosts: (): Promise<Post[]> => {
-        return apiService<Post[]>('/bookmarks');
+    getBookmarkedPosts: async (): Promise<Post[]> => {
+        return await apiService<Post[]>('/bookmarks');
     },
 };

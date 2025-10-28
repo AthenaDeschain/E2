@@ -41,7 +41,7 @@ const Workbench: React.FC = () => {
         const newCheckpoint: Checkpoint = {
             id: `cp-${Date.now()}`,
             content: paperContent,
-            timestamp: Date.now(),
+            timestamp: new Date().toISOString(),
             charCount: paperContent.length,
         };
         const updatedCheckpoints = [newCheckpoint, ...checkpoints];
@@ -58,6 +58,14 @@ const Workbench: React.FC = () => {
         const updatedCheckpoints = checkpoints.filter(cp => cp.id !== id);
         setCheckpoints(updatedCheckpoints);
         localStorage.setItem('workbench_checkpoints', JSON.stringify(updatedCheckpoints));
+    };
+
+    const handleAcceptAndReplace = () => {
+        if (result?.text) {
+            setPaperContent(result.text);
+            localStorage.setItem('workbench_content', result.text);
+            setResult(null); // Clear the result after accepting
+        }
     };
 
     const handleRunTool = useCallback(async () => {
@@ -105,12 +113,6 @@ const Workbench: React.FC = () => {
         try {
             const response = await apiCall;
             setResult(response);
-            if (activeSubTool === WorkbenchTool.LANGUAGE) {
-                if(window.confirm("Do you want to replace the editor content with the updated language?")) {
-                    setPaperContent(response.text);
-                    localStorage.setItem('workbench_content', response.text);
-                }
-            }
         } catch (err: any) {
             setError(err.message || 'An unexpected error occurred.');
         } finally {
@@ -170,12 +172,19 @@ const Workbench: React.FC = () => {
 
             {/* Right Panel: AI Tools */}
             <div className="w-full lg:w-1/2 p-4 flex flex-col">
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-2">AI Tools</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mb-2" id="ai-tools-heading">AI Tools</h2>
                 <div className="flex-shrink-0 bg-slate-100 dark:bg-slate-800 p-2 rounded-lg">
-                    <div className="flex space-x-1">
+                    <div role="tablist" aria-labelledby="ai-tools-heading" className="flex space-x-1">
                         {SUB_TOOLS.map(tool => (
                              <Tooltip key={tool.name} tip={tool.description} position="bottom">
-                                <button onClick={() => setActiveSubTool(tool.name as WorkbenchTool)} className={`flex-1 flex items-center justify-center p-2 rounded-md text-sm font-medium transition-colors ${activeSubTool === tool.name ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow' : 'text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}>
+                                <button 
+                                    role="tab"
+                                    id={`workbench-tab-${tool.name.replace(' ', '-')}`}
+                                    aria-controls="workbench-tabpanel"
+                                    aria-selected={activeSubTool === tool.name}
+                                    onClick={() => setActiveSubTool(tool.name as WorkbenchTool)} 
+                                    className={`flex-1 flex items-center justify-center p-2 rounded-md text-sm font-medium transition-colors ${activeSubTool === tool.name ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-300 shadow' : 'text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-700/50'}`}
+                                >
                                     {tool.icon}
                                     <span className="ml-2 hidden sm:inline">{tool.name}</span>
                                 </button>
@@ -195,23 +204,42 @@ const Workbench: React.FC = () => {
                          />
                      )}
                      {showAudienceToggle && (
-                        <div className="mb-3">
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Target Audience</label>
+                        <fieldset className="mb-3">
+                            <legend className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Target Audience</legend>
                             <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-1">
-                                <button onClick={() => setAudience('Public')} className={`w-full py-1.5 text-sm rounded-md transition-all ${audience === 'Public' ? 'bg-white dark:bg-slate-600 shadow' : ''}`}>Public</button>
-                                <button onClick={() => setAudience('Academic')} className={`w-full py-1.5 text-sm rounded-md transition-all ${audience === 'Academic' ? 'bg-white dark:bg-slate-600 shadow' : ''}`}>Academic</button>
+                                <div className="w-full">
+                                    <input type="radio" id="audience-public" name="audience" value="Public" checked={audience === 'Public'} onChange={() => setAudience('Public')} className="sr-only" />
+                                    <label htmlFor="audience-public" className={`w-full block py-1.5 text-sm text-center rounded-md transition-all cursor-pointer ${audience === 'Public' ? 'bg-white dark:bg-slate-600 shadow' : ''}`}>Public</label>
+                                </div>
+                                <div className="w-full">
+                                    <input type="radio" id="audience-academic" name="audience" value="Academic" checked={audience === 'Academic'} onChange={() => setAudience('Academic')} className="sr-only" />
+                                    <label htmlFor="audience-academic" className={`w-full block py-1.5 text-sm text-center rounded-md transition-all cursor-pointer ${audience === 'Academic' ? 'bg-white dark:bg-slate-600 shadow' : ''}`}>Academic</label>
+                                </div>
                             </div>
-                        </div>
+                        </fieldset>
                      )}
                      <button onClick={handleRunTool} disabled={isLoading} className="w-full px-4 py-2 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:bg-slate-400 transition-colors">
                          {isLoading ? 'Processing...' : `Run ${activeSubTool}`}
                      </button>
                 </div>
                 
-                 <div className="flex-grow overflow-y-auto bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
+                 <div 
+                    id="workbench-tabpanel" 
+                    role="tabpanel" 
+                    aria-labelledby={`workbench-tab-${activeSubTool.replace(' ', '-')}`} 
+                    className="flex-grow overflow-y-auto bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg"
+                 >
                     {error && <div className="m-4 text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20 p-3 rounded-md">{error}</div>}
                     {isLoading && <LoadingSpinner />}
-                    {result && <ResultDisplay result={result} title={`${activeSubTool} Results`} />}
+                    {result && (
+                        <ResultDisplay result={result} title={`${activeSubTool} Results`}>
+                            {activeSubTool === WorkbenchTool.LANGUAGE && (
+                                <button onClick={handleAcceptAndReplace} className="px-4 py-2 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                                    Accept & Replace Editor Content
+                                </button>
+                            )}
+                        </ResultDisplay>
+                    )}
                     {!isLoading && !result && <div className="flex items-center justify-center h-full text-center text-slate-500 dark:text-slate-400 p-8">Select a tool and run it to see results here.</div>}
                  </div>
             </div>

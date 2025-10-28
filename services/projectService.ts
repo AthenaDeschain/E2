@@ -6,6 +6,3 @@ export const projectService = {
         return apiService<Project>('/projects', 'POST', data);
     },
 };
-
-// FIX: Export the CreateProjectPayload type so it can be imported by components.
-export type { CreateProjectPayload };

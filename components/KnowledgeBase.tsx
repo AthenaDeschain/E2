@@ -18,6 +18,7 @@ const KnowledgeBase: React.FC = () => {
     const [articles, setArticles] = useState<KnowledgeBaseArticle[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
         const fetchArticles = async () => {
@@ -35,8 +36,19 @@ const KnowledgeBase: React.FC = () => {
         fetchArticles();
     }, []);
 
+    const filteredArticles = useMemo(() => {
+        if (!searchTerm) {
+            return articles;
+        }
+        const lowercasedTerm = searchTerm.toLowerCase();
+        return articles.filter(article => 
+            article.title.toLowerCase().includes(lowercasedTerm) ||
+            article.description.toLowerCase().includes(lowercasedTerm)
+        );
+    }, [articles, searchTerm]);
+
     const groupedArticles = useMemo(() => {
-        return articles.reduce((acc, article) => {
+        return filteredArticles.reduce((acc, article) => {
             const { audience } = article;
             if (!acc[audience]) {
                 acc[audience] = [];
@@ -44,7 +56,7 @@ const KnowledgeBase: React.FC = () => {
             acc[audience].push(article);
             return acc;
         }, {} as Record<KnowledgeBaseArticle['audience'], KnowledgeBaseArticle[]>);
-    }, [articles]);
+    }, [filteredArticles]);
 
 
     const renderContent = () => {
@@ -53,6 +65,13 @@ const KnowledgeBase: React.FC = () => {
         }
         if (error) {
             return <div className="text-center py-16 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg">{error}</div>;
+        }
+        const hasResults = Object.keys(groupedArticles).length > 0;
+        if (!hasResults) {
+            return <div className="text-center py-16 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
+                 <h3 className="text-xl font-medium text-slate-900 dark:text-slate-200">No articles found</h3>
+                 <p className="mt-1 text-slate-500 dark:text-slate-400">No articles matched your search term "{searchTerm}".</p>
+            </div>;
         }
         return (
             <>
@@ -101,9 +120,13 @@ const KnowledgeBase: React.FC = () => {
                     </p>
                     <div className="mt-6 max-w-xl mx-auto">
                         <div className="relative">
+                            <label htmlFor="kb-search" className="sr-only">Search articles</label>
                             <input
+                                id="kb-search"
                                 type="search"
                                 placeholder="Search articles..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
                                 className="w-full p-3 sm:p-4 pl-10 sm:pl-12 text-base sm:text-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-full shadow-sm"
                             />
                             <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">

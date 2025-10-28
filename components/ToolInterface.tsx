@@ -60,7 +60,7 @@ const ToolInterface: React.FC<ToolInterfaceProps> = ({ title, description, place
                         onChange={(e) => setInput(e.target.value)}
                         placeholder={placeholder}
                         disabled={isLoading}
-                        className={`w-full p-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 ${isLargeInput ? 'min-h-[200px] resize-y' : ''}`}
+                        className={`w-full p-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 ease-in-out text-slate-900 dark:text-slate-200 placeholder-slate-500 dark:placeholder-slate-400 ${isLargeInput ? 'min-h-[200px] resize-y' : ''}`}
                     />
                      <button
                         onClick={handleSubmit}

@@ -45,6 +45,9 @@ const App: React.FC = () => {
         const postId = link.split('/').pop();
         if (postId) {
             setViewingPostId(postId);
+            // Optionally, switch to the feed page if not already there,
+            // depending on desired UX when clicking a notification for a post.
+            // setCurrentPage(Page.FEED); 
         }
     };
 
@@ -84,7 +87,7 @@ const App: React.FC = () => {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-screen bg-slate-100 dark:bg-slate-900">
-                <div className="w-16 h-16 border-4 border-blue-500 border-dashed rounded-full animate-spin"></div>
+                <div className="w-16 h-16 border-4 border-amber-500 border-dashed rounded-full animate-spin"></div>
             </div>
         );
     }
@@ -94,13 +97,18 @@ const App: React.FC = () => {
     }
     
     return (
-        <div className="flex h-screen bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+        <div className="flex h-screen bg-slate-100 dark:bg-indigo-950 text-slate-800 dark:text-slate-200">
             {showWelcomeModal && <WelcomeModal onClose={() => setShowWelcomeModal(false)} />}
             {/* Sidebar */}
-            <aside className={`bg-white dark:bg-slate-800/50 border-r border-slate-200 dark:border-slate-700 flex flex-col transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
-                <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 h-16">
+            <aside className={`bg-white dark:bg-purple-900/20 border-r border-slate-200 dark:border-indigo-800 flex flex-col transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
+                <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-indigo-800 h-16">
                     <span className={`font-bold text-2xl text-slate-900 dark:text-white ${!isSidebarOpen && 'hidden'}`}>E²</span>
-                     <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700">
+                     <button 
+                        onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+                        className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-indigo-700"
+                        aria-label={isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+                        aria-expanded={isSidebarOpen}
+                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
                     </button>
                 </div>
@@ -108,10 +116,10 @@ const App: React.FC = () => {
                 <nav className="flex-grow p-2 space-y-2">
                     {NAV_ITEMS.map(group => (
                         <div key={group.group}>
-                            <h3 className={`px-2 py-1 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider ${!isSidebarOpen && 'text-center'}`}>{isSidebarOpen ? group.group : group.group.substring(0,1)}</h3>
+                            <h3 className={`px-2 py-1 text-xs font-semibold text-slate-500 dark:text-indigo-400 uppercase tracking-wider ${!isSidebarOpen && 'text-center'}`}>{isSidebarOpen ? group.group : group.group.substring(0,1)}</h3>
                             {group.items.map(item => (
-                                <Tooltip key={item.name} tip={item.name} position="right" >
-                                    <button onClick={() => handlePageChange(item.name)} className={`w-full flex items-center p-3 rounded-md transition-colors ${currentPage === item.name ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300' : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
+                                <Tooltip key={item.name} tip={item.name} position="right" disabled={isSidebarOpen}>
+                                    <button onClick={() => handlePageChange(item.name)} className={`w-full flex items-center p-3 rounded-md transition-colors ${!isSidebarOpen ? 'justify-center' : ''} ${currentPage === item.name ? 'bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-300' : 'hover:bg-slate-100 dark:hover:bg-indigo-800'}`}>
                                         {item.icon}
                                         <span className={`ml-4 font-medium ${!isSidebarOpen && 'hidden'}`}>{item.name}</span>
                                     </button>

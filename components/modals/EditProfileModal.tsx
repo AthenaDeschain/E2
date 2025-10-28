@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { User } from '../../types';
-import { userService, UpdateUserPayload } from '../../services/userService';
+import React, { useState, useEffect, useRef } from 'react';
+import { User, UpdateUserPayload } from '../../types';
+import { userService } from '../../services/userService';
 import { useToast } from '../../contexts/ToastContext';
 
 interface EditProfileModalProps {
@@ -16,6 +16,48 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onPr
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const { addToast } = useToast();
+    const modalRef = useRef<HTMLDivElement>(null);
+    const nameInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        const lastFocusedElement = document.activeElement as HTMLElement;
+        const modalNode = modalRef.current;
+        if (!modalNode) return;
+
+        nameInputRef.current?.focus();
+
+        const focusableElements = modalNode.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                onClose();
+            }
+            if (event.key === 'Tab') {
+                if (event.shiftKey) { // Shift+Tab
+                    if (document.activeElement === firstElement) {
+                        lastElement.focus();
+                        event.preventDefault();
+                    }
+                } else { // Tab
+                    if (document.activeElement === lastElement) {
+                        firstElement.focus();
+                        event.preventDefault();
+                    }
+                }
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            lastFocusedElement?.focus();
+        };
+    }, [onClose]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -43,7 +85,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onPr
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="edit-profile-title">
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-lg p-6 relative" onClick={e => e.stopPropagation()}>
+            <div ref={modalRef} className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-lg p-6 relative" onClick={e => e.stopPropagation()}>
                 <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" aria-label="Close modal">
                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
@@ -52,7 +94,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onPr
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label htmlFor="name" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Name</label>
-                        <input id="name" type="text" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md" />
+                        <input ref={nameInputRef} id="name" type="text" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md" />
                     </div>
                     <div>
                         <label htmlFor="bio" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Bio</label>

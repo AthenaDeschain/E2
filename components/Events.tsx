@@ -44,7 +44,8 @@ const Events: React.FC = () => {
                 setIsLoading(true);
                 setError(null);
                 const fetchedEvents = await apiService<Event[]>('/events');
-                setEvents(fetchedEvents);
+                const sortedEvents = fetchedEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                setEvents(sortedEvents);
             } catch (err) {
                 setError("Failed to load events. The backend might be offline.");
             } finally {

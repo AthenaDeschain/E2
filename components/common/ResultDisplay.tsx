@@ -4,32 +4,99 @@ import { GeminiResponse } from '../../types';
 interface ResultDisplayProps {
     result: GeminiResponse | null;
     title?: string;
+    children?: React.ReactNode;
 }
 
-const parseMarkdown = (text: string) => {
-    let html = text
-        .replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mt-4 mb-2">$1</h3>')
-        .replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold text-slate-800 dark:text-slate-200 mt-5 mb-3">$1</h2>')
-        .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-6 mb-4">$1</h1>')
-        .replace(/^> (.*$)/gim, '<blockquote class="border-l-4 border-slate-300 dark:border-slate-600 pl-4 italic my-4 text-slate-500 dark:text-slate-400">$1</blockquote>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/`([^`]+)`/g, '<code class="bg-slate-100 dark:bg-slate-700 rounded-sm px-1.5 py-1 text-sm font-mono text-emerald-600 dark:text-emerald-400">$1</code>')
-        .replace(/^- (.*$)/gim, '<li class="ml-6 list-disc">$1</li>')
-        .replace(/^\d+\. (.*$)/gim, '<li class="ml-6 list-decimal">$1</li>')
-        .replace(/\n/g, '<br />');
+const escapeHtml = (unsafe: string): string => {
+    return unsafe
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+};
 
-    // Wrap consecutive list items in <ul> or <ol> tags
-    html = html.replace(/<br \/>(<(li|ul|ol))/g, '$1');
-    html = html.replace(/(<(li).*?<\/li>)(?!<(li))/gs, '<ul>$1</ul>');
-    html = html.replace(/<\/ul><br \/><ul>/g, '');
+const parseMarkdown = (text: string): string => {
+    if (!text) return '';
 
+    const processLine = (line: string): string => {
+        let processedLine = escapeHtml(line);
+        processedLine = processedLine
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`([^`]+)`/g, '<code>$1</code>');
+        return processedLine;
+    };
+
+    const lines = text.split('\n');
+    let html = '';
+    let inList: 'ul' | 'ol' | null = null;
+
+    for (const line of lines) {
+        if (line.trim() === '') {
+            if (inList) {
+                html += `</${inList}>`;
+                inList = null;
+            }
+            continue;
+        }
+
+        if (line.startsWith('# ')) {
+            if (inList) { html += `</${inList}>`; inList = null; }
+            html += `<h1>${processLine(line.substring(2))}</h1>`;
+            continue;
+        }
+        if (line.startsWith('## ')) {
+            if (inList) { html += `</${inList}>`; inList = null; }
+            html += `<h2>${processLine(line.substring(3))}</h2>`;
+            continue;
+        }
+        if (line.startsWith('### ')) {
+            if (inList) { html += `</${inList}>`; inList = null; }
+            html += `<h3>${processLine(line.substring(4))}</h3>`;
+            continue;
+        }
+        if (line.startsWith('> ')) {
+            if (inList) { html += `</${inList}>`; inList = null; }
+            html += `<blockquote><p>${processLine(line.substring(2))}</p></blockquote>`;
+            continue;
+        }
+
+        const isUnordered = line.startsWith('- ') || line.startsWith('* ');
+        const isOrdered = /^\d+\. /.test(line);
+
+        if (isUnordered) {
+            if (inList !== 'ul') {
+                if (inList) { html += `</${inList}>`; }
+                html += '<ul>';
+                inList = 'ul';
+            }
+            html += `<li>${processLine(line.substring(2))}</li>`;
+        } else if (isOrdered) {
+            if (inList !== 'ol') {
+                if (inList) { html += `</${inList}>`; }
+                html += '<ol>';
+                inList = 'ol';
+            }
+            html += `<li>${processLine(line.replace(/^\d+\. /, ''))}</li>`;
+        } else {
+            if (inList) {
+                html += `</${inList}>`;
+                inList = null;
+            }
+            html += `<p>${processLine(line)}</p>`;
+        }
+    }
+
+    if (inList) {
+        html += `</${inList}>`;
+    }
 
     return html;
 };
 
 
-const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, title = "Results" }) => {
+const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, title = "Results", children }) => {
     if (!result) return null;
 
     return (
@@ -40,6 +107,7 @@ const ResultDisplay: React.FC<ResultDisplayProps> = ({ result, title = "Results"
                     className="prose prose-slate dark:prose-invert max-w-none text-slate-600 dark:text-slate-300 space-y-4"
                     dangerouslySetInnerHTML={{ __html: parseMarkdown(result.text) }}
                 ></div>
+                 {children && <div className="mt-4">{children}</div>}
             </div>
             {result.sources && result.sources.length > 0 && (
                 <div className="border-t border-slate-200 dark:border-slate-700 p-6 bg-slate-50 dark:bg-slate-800 rounded-b-lg">

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Project } from '../types';
 import Tooltip from './common/Tooltip';
 import { useAuth } from '../contexts/AuthContext';
@@ -92,6 +92,7 @@ const Projects: React.FC = () => {
     const [tagFilter, setTagFilter] = useState('All');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const { user } = useAuth();
+    const createProjectButtonRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
         const fetchProjects = async () => {
@@ -112,10 +113,15 @@ const Projects: React.FC = () => {
         };
         fetchProjects();
     }, [user]);
+    
+    const closeModal = () => {
+        setIsCreateModalOpen(false);
+        createProjectButtonRef.current?.focus();
+    };
 
     const handleProjectCreated = (newProject: Project) => {
         setProjects(prevProjects => [newProject, ...prevProjects]);
-        setIsCreateModalOpen(false);
+        closeModal();
     };
 
     const allTags = useMemo(() => ['All', ...Array.from(new Set(projects.flatMap(p => p.tags)))], [projects]);
@@ -160,7 +166,7 @@ const Projects: React.FC = () => {
         <>
             {isCreateModalOpen && (
                 <CreateProjectModal 
-                    onClose={() => setIsCreateModalOpen(false)}
+                    onClose={closeModal}
                     onProjectCreated={handleProjectCreated}
                 />
             )}
@@ -171,37 +177,53 @@ const Projects: React.FC = () => {
                             <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">My Projects</h1>
                             <p className="mt-2 text-slate-600 dark:text-slate-400">Manage your collaborative research and track your contributions.</p>
                         </div>
-                        <button onClick={() => setIsCreateModalOpen(true)} className="mt-4 md:mt-0 w-full md:w-auto inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-slate-900 transition-colors">
+                        <button 
+                            ref={createProjectButtonRef} 
+                            onClick={() => setIsCreateModalOpen(true)} 
+                            className="mt-4 md:mt-0 w-full md:w-auto inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-slate-900 transition-colors"
+                        >
                             Start a New Project
                         </button>
                     </div>
                     
                     <div className="mb-6 p-4 bg-slate-100 dark:bg-slate-800/50 rounded-lg">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <input
-                                type="text"
-                                placeholder="Search your projects..."
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                                className="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md"
-                            />
-                            <select
-                                value={statusFilter}
-                                onChange={e => setStatusFilter(e.target.value)}
-                                className="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md"
-                            >
-                                <option>All</option>
-                                <option>Recruiting</option>
-                                <option>In Progress</option>
-                                <option>Completed</option>
-                            </select>
-                             <select
-                                value={tagFilter}
-                                onChange={e => setTagFilter(e.target.value)}
-                                className="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md"
-                            >
-                                {allTags.map(tag => <option key={tag}>{tag}</option>)}
-                            </select>
+                            <div>
+                                <label htmlFor="project-search" className="sr-only">Search your projects</label>
+                                <input
+                                    id="project-search"
+                                    type="text"
+                                    placeholder="Search your projects..."
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                    className="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md"
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="status-filter" className="sr-only">Filter by status</label>
+                                <select
+                                    id="status-filter"
+                                    value={statusFilter}
+                                    onChange={e => setStatusFilter(e.target.value)}
+                                    className="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md"
+                                >
+                                    <option>All</option>
+                                    <option>Recruiting</option>
+                                    <option>In Progress</option>
+                                    <option>Completed</option>
+                                </select>
+                            </div>
+                             <div>
+                                <label htmlFor="tag-filter" className="sr-only">Filter by tag</label>
+                                <select
+                                    id="tag-filter"
+                                    value={tagFilter}
+                                    onChange={e => setTagFilter(e.target.value)}
+                                    className="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md"
+                                >
+                                    {allTags.map(tag => <option key={tag}>{tag}</option>)}
+                                </select>
+                             </div>
                         </div>
                     </div>
                     
