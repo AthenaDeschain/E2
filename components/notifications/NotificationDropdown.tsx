@@ -4,7 +4,11 @@ import { Notification } from '../../types';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { useSocket } from '../../contexts/SocketContext';
 
-const NotificationDropdown: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+interface NotificationDropdownProps {
+    onNotificationClick: (link: string) => void;
+}
+
+const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ onNotificationClick }) => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -57,16 +61,18 @@ const NotificationDropdown: React.FC<{ onClose: () => void }> = ({ onClose }) =>
         return (
              <ul className="divide-y divide-slate-200 dark:divide-slate-700">
                 {notifications.map(notif => (
-                    <li key={notif.id} className={`p-3 hover:bg-slate-50 dark:hover:bg-slate-700 ${!notif.isRead ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
-                        <div className="flex items-start gap-3">
-                            <img src={notif.sender.avatarUrl} alt={notif.sender.name} className="h-8 w-8 rounded-full" />
-                            <div className="text-sm">
-                                <p className="text-slate-800 dark:text-slate-200">
-                                    <span className="font-semibold">{notif.sender.name}</span> {notif.content}
-                                </p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{notif.timestamp}</p>
+                    <li key={notif.id}>
+                        <button onClick={() => onNotificationClick(notif.link)} className={`w-full text-left p-3 hover:bg-slate-50 dark:hover:bg-slate-700 ${!notif.isRead ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
+                            <div className="flex items-start gap-3">
+                                <img src={notif.sender.avatarUrl} alt={notif.sender.name} className="h-8 w-8 rounded-full" />
+                                <div className="text-sm">
+                                    <p className="text-slate-800 dark:text-slate-200">
+                                        <span className="font-semibold">{notif.sender.name}</span> {notif.content}
+                                    </p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{notif.timestamp}</p>
+                                </div>
                             </div>
-                        </div>
+                        </button>
                     </li>
                 ))}
             </ul>

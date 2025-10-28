@@ -3,6 +3,9 @@ import { Post } from '../../types';
 import { postService } from '../../services/postService';
 import { useToast } from '../../contexts/ToastContext';
 import CommentSection from './CommentSection';
+import ContentMenu from './ContentMenu';
+import ConfirmActionModal from '../modals/ConfirmActionModal';
+import { reportService } from '../../services/reportService';
 
 export const PostCard: React.FC<{ post: Post, onBookmarkToggle?: (postId: string) => void }> = ({ post, onBookmarkToggle }) => {
     const [isLiked, setIsLiked] = useState(post.isLiked);
@@ -10,6 +13,7 @@ export const PostCard: React.FC<{ post: Post, onBookmarkToggle?: (postId: string
     const [isBookmarked, setIsBookmarked] = useState(post.isBookmarked);
     const [showComments, setShowComments] = useState(false);
     const [commentCount, setCommentCount] = useState(post.comments);
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const { addToast } = useToast();
 
     const handleLikeToggle = async () => {
@@ -43,39 +47,67 @@ export const PostCard: React.FC<{ post: Post, onBookmarkToggle?: (postId: string
     const handleNewComment = () => {
         setCommentCount(prev => prev + 1);
     };
+
+    const handleReport = async () => {
+        try {
+            await reportService.reportContent({ contentType: 'post', contentId: post.id });
+            addToast('Post reported for review.', 'info');
+        } catch (error: any) {
+            addToast(error.message || 'Failed to report post.', 'error');
+        } finally {
+            setIsReportModalOpen(false);
+        }
+    };
     
     return (
-        <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">
-            <div className="p-6">
-                <div className="flex items-start">
-                    <img className="h-12 w-12 rounded-full" src={post.author.avatarUrl} alt={post.author.name} />
-                    <div className="ml-4">
-                        <div className="flex items-center gap-2">
-                            <p className="font-bold text-slate-900 dark:text-white">{post.author.name}</p>
-                             <span className="text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 px-2 py-0.5 rounded-full">{post.category}</span>
+        <>
+            <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">
+                <div className="p-6">
+                    <div className="flex items-start justify-between">
+                        <div className="flex items-start">
+                             <img className="h-12 w-12 rounded-full" src={post.author.avatarUrl} alt={post.author.name} />
+                             <div className="ml-4">
+                                <div className="flex items-center gap-2">
+                                    <p className="font-bold text-slate-900 dark:text-white">{post.author.name}</p>
+                                     <span className="text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 px-2 py-0.5 rounded-full">{post.category}</span>
+                                </div>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">@{post.author.handle} &middot; {post.timestamp}</p>
+                            </div>
                         </div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">@{post.author.handle} &middot; {post.timestamp}</p>
+                        <ContentMenu onReport={() => setIsReportModalOpen(true)} />
                     </div>
+                    <p className="mt-4 text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{post.content}</p>
                 </div>
-                <p className="mt-4 text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{post.content}</p>
-            </div>
-            <div className="border-t border-slate-200 dark:border-slate-700 px-6 py-3 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
-                <div className="flex space-x-6">
-                    <button onClick={() => setShowComments(!showComments)} className="flex items-center space-x-2 hover:text-blue-600" aria-expanded={showComments}>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-                        <span>{commentCount} Comments</span>
-                    </button>
-                    <button onClick={handleLikeToggle} className={`flex items-center space-x-2 transition-colors ${isLiked ? 'text-red-500' : 'hover:text-red-500'}`} aria-label="Like post">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill={isLiked ? "currentColor" : "none"} stroke="currentColor"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" /></svg>
-                        <span>{likeCount} Likes</span>
+                <div className="border-t border-slate-200 dark:border-slate-700 px-6 py-3 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
+                    <div className="flex space-x-6">
+                        <button onClick={() => setShowComments(!showComments)} className="flex items-center space-x-2 hover:text-blue-600" aria-expanded={showComments}>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                            <span>{commentCount} Comments</span>
+                        </button>
+                        <button onClick={handleLikeToggle} className={`flex items-center space-x-2 transition-colors ${isLiked ? 'text-red-500' : 'hover:text-red-500'}`} aria-label="Like post">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill={isLiked ? "currentColor" : "none"} stroke="currentColor"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" /></svg>
+                            <span>{likeCount} Likes</span>
+                        </button>
+                    </div>
+                    <button onClick={handleBookmarkToggle} className={`flex items-center space-x-2 transition-colors ${isBookmarked ? 'text-yellow-500' : 'hover:text-yellow-500'}`} aria-label="Bookmark post">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={isBookmarked ? "currentColor" : "none"} viewBox="0 0 20 20" stroke="currentColor"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" /></svg>
+                        <span>{isBookmarked ? 'Bookmarked' : 'Bookmark'}</span>
                     </button>
                 </div>
-                <button onClick={handleBookmarkToggle} className={`flex items-center space-x-2 transition-colors ${isBookmarked ? 'text-yellow-500' : 'hover:text-yellow-500'}`} aria-label="Bookmark post">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={isBookmarked ? "currentColor" : "none"} viewBox="0 0 20 20" stroke="currentColor"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" /></svg>
-                    <span>{isBookmarked ? 'Bookmarked' : 'Bookmark'}</span>
-                </button>
+                 {showComments && <CommentSection postId={post.id} onCommentAdded={handleNewComment}/>}
             </div>
-             {showComments && <CommentSection postId={post.id} onCommentAdded={handleNewComment}/>}
-        </div>
+             <ConfirmActionModal
+                isOpen={isReportModalOpen}
+                onClose={() => setIsReportModalOpen(false)}
+                onConfirm={handleReport}
+                title="Report Post"
+                confirmText="Report"
+                isDestructive={true}
+            >
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Are you sure you want to report this post? This will submit it to administrators for review.
+                </p>
+            </ConfirmActionModal>
+        </>
     );
 };

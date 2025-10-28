@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import AuthPage from './pages/AuthPage';
 import { Page, CommunityCategory } from './types';
@@ -16,19 +16,42 @@ import Tooltip from './components/common/Tooltip';
 import CommunityFeed from './components/CommunityFeed';
 import GlobalFeed from './components/GlobalFeed';
 import Header from './components/layout/Header';
+import SettingsPage from './pages/SettingsPage';
+import WelcomeModal from './components/modals/WelcomeModal';
+import PostDetailView from './components/posts/PostDetailView';
+
 
 const App: React.FC = () => {
     const { user, isLoading } = useAuth();
     const [currentPage, setCurrentPage] = useState<Page>(Page.FEED);
     const [selectedCommunity, setSelectedCommunity] = useState<CommunityCategory | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+    const [viewingPostId, setViewingPostId] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (user && !user.role) {
+            setShowWelcomeModal(true);
+        }
+    }, [user]);
 
     const handlePageChange = (page: Page) => {
         setSelectedCommunity(null); // Reset sub-navigation when changing main page
+        setViewingPostId(null); // Reset post view when changing page
         setCurrentPage(page);
     };
 
+    const navigateToPost = (link: string) => {
+        const postId = link.split('/').pop();
+        if (postId) {
+            setViewingPostId(postId);
+        }
+    };
+
     const renderPage = () => {
+        if (viewingPostId) {
+            return <PostDetailView postId={viewingPostId} onBack={() => setViewingPostId(null)} />;
+        }
         switch (currentPage) {
             case Page.FEED:
                 return <GlobalFeed />;
@@ -51,6 +74,8 @@ const App: React.FC = () => {
                 return <Events />;
             case Page.FUNDING:
                 return <Funding />;
+            case Page.SETTINGS:
+                return <SettingsPage />;
             default:
                 return <GlobalFeed />;
         }
@@ -70,6 +95,7 @@ const App: React.FC = () => {
     
     return (
         <div className="flex h-screen bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+            {showWelcomeModal && <WelcomeModal onClose={() => setShowWelcomeModal(false)} />}
             {/* Sidebar */}
             <aside className={`bg-white dark:bg-slate-800/50 border-r border-slate-200 dark:border-slate-700 flex flex-col transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-20'}`}>
                 <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 h-16">
@@ -98,7 +124,7 @@ const App: React.FC = () => {
 
             {/* Main Content Wrapper */}
             <div className="flex-1 flex flex-col overflow-hidden">
-                <Header />
+                <Header setCurrentPage={setCurrentPage} navigateToPost={navigateToPost} />
                 <main className="flex-1 overflow-y-auto">
                     {renderPage()}
                 </main>

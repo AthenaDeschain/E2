@@ -5,24 +5,61 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useSocket } from '../../contexts/SocketContext';
+import ContentMenu from './ContentMenu';
+import ConfirmActionModal from '../modals/ConfirmActionModal';
+import { reportService } from '../../services/reportService';
+
 
 interface CommentSectionProps {
     postId: string;
     onCommentAdded: () => void;
 }
 
-const CommentCard: React.FC<{ comment: Comment }> = ({ comment }) => (
-    <div className="flex items-start space-x-3">
-        <img src={comment.author.avatarUrl} alt={comment.author.name} className="h-9 w-9 rounded-full" />
-        <div className="flex-1">
-            <div className="bg-slate-100 dark:bg-slate-700 rounded-lg px-3 py-2">
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{comment.author.name}</p>
-                <p className="text-sm text-slate-600 dark:text-slate-300">{comment.content}</p>
+const CommentCard: React.FC<{ comment: Comment }> = ({ comment }) => {
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const { addToast } = useToast();
+
+    const handleReport = async () => {
+        try {
+            await reportService.reportContent({ contentType: 'comment', contentId: comment.id });
+            addToast('Comment reported for review.', 'info');
+        } catch (error: any) {
+            addToast(error.message || 'Failed to report comment.', 'error');
+        } finally {
+            setIsReportModalOpen(false);
+        }
+    };
+
+    return (
+        <>
+            <div className="flex items-start space-x-3 group">
+                <img src={comment.author.avatarUrl} alt={comment.author.name} className="h-9 w-9 rounded-full" />
+                <div className="flex-1">
+                    <div className="bg-slate-100 dark:bg-slate-700 rounded-lg px-3 py-2">
+                        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{comment.author.name}</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-300">{comment.content}</p>
+                    </div>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 pl-3">{comment.timestamp}</span>
+                </div>
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ContentMenu onReport={() => setIsReportModalOpen(true)} />
+                </div>
             </div>
-            <span className="text-xs text-slate-500 dark:text-slate-400 pl-3">{comment.timestamp}</span>
-        </div>
-    </div>
-);
+            <ConfirmActionModal
+                isOpen={isReportModalOpen}
+                onClose={() => setIsReportModalOpen(false)}
+                onConfirm={handleReport}
+                title="Report Comment"
+                confirmText="Report"
+                isDestructive={true}
+            >
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Are you sure you want to report this comment?
+                </p>
+            </ConfirmActionModal>
+        </>
+    )
+};
 
 
 const CommentSection: React.FC<CommentSectionProps> = ({ postId, onCommentAdded }) => {

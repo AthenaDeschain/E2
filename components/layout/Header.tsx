@@ -2,9 +2,14 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import NotificationDropdown from '../notifications/NotificationDropdown';
 import { useSocket } from '../../contexts/SocketContext';
-import { Notification } from '../../types';
+import { Notification, Page } from '../../types';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+    setCurrentPage: (page: Page) => void;
+    navigateToPost: (link: string) => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ setCurrentPage, navigateToPost }) => {
     const { user, logout } = useAuth();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -43,6 +48,16 @@ const Header: React.FC = () => {
         }
     };
 
+    const handleNavigateToSettings = () => {
+        setCurrentPage(Page.SETTINGS);
+        setIsProfileOpen(false);
+    };
+
+    const handleNotificationClick = (link: string) => {
+        navigateToPost(link);
+        setIsNotificationsOpen(false);
+    };
+
     if (!user) return null;
 
     return (
@@ -56,7 +71,7 @@ const Header: React.FC = () => {
                            <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-800/50"></span>
                         )}
                     </button>
-                    {isNotificationsOpen && <NotificationDropdown onClose={() => setIsNotificationsOpen(false)} />}
+                    {isNotificationsOpen && <NotificationDropdown onNotificationClick={handleNotificationClick} />}
                 </div>
 
                 {/* Profile Dropdown */}
@@ -68,7 +83,7 @@ const Header: React.FC = () => {
                     </button>
                     {isProfileOpen && (
                         <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 py-1 z-10">
-                             <a href="#" className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">Settings</a>
+                             <button onClick={handleNavigateToSettings} className="w-full text-left block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">Settings</button>
                             <button onClick={logout} className="w-full text-left block px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700">
                                 Log out
                             </button>

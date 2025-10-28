@@ -1,26 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { User } from '../types';
+import { User, UserStats } from '../types';
 import EditProfileModal from './modals/EditProfileModal';
+import apiService from '../services/apiService';
 
 const Profile: React.FC = () => {
-    const { user, setUser } = useAuth(); // Assume setUser is exposed by AuthContext to update user info
+    const { user, setUser } = useAuth();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [stats, setStats] = useState<UserStats | null>(null);
     
-    // This is a placeholder. In a real app, this would be part of the user's data.
-    const contributions = {
-        posts: 28,
-        projects: 4,
-        reviews: 12,
-        citations: 157
-    };
+    useEffect(() => {
+        const fetchStats = async () => {
+            if (user) {
+                try {
+                    const userStats = await apiService<UserStats>('/users/me/stats');
+                    setStats(userStats);
+                } catch (error) {
+                    console.error("Failed to fetch user stats:", error);
+                    setStats(null);
+                }
+            }
+        };
+        fetchStats();
+    }, [user]);
     
     if (!user) {
         return <div>Loading profile...</div>;
     }
 
     const handleProfileUpdate = (updatedUser: User) => {
-        if(setUser) { // Check if setUser exists
+        if(setUser) {
             setUser(updatedUser);
         }
         setIsEditModalOpen(false);
@@ -59,12 +68,21 @@ const Profile: React.FC = () => {
                     
                     {/* Stats */}
                     <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-6">
-                        {Object.entries(contributions).map(([key, value]) => (
-                            <div key={key} className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-5 text-center">
-                                <p className="text-3xl font-bold text-slate-900 dark:text-white">{value}</p>
-                                <p className="text-sm font-medium text-slate-500 dark:text-slate-400 capitalize">{key}</p>
-                            </div>
-                        ))}
+                        {stats ? (
+                             Object.entries(stats).map(([key, value]) => (
+                                <div key={key} className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-5 text-center">
+                                    <p className="text-3xl font-bold text-slate-900 dark:text-white">{value}</p>
+                                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 capitalize">{key}</p>
+                                </div>
+                            ))
+                        ) : (
+                            Array.from({ length: 4 }).map((_, i) => (
+                                <div key={i} className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-5 text-center animate-pulse">
+                                    <div className="h-9 bg-slate-200 dark:bg-slate-700 rounded w-1/4 mx-auto"></div>
+                                    <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mx-auto mt-2"></div>
+                                </div>
+                            ))
+                        )}
                     </div>
 
                     {/* Interests and Skills */}

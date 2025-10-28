@@ -81,8 +81,7 @@ const CreatePost: React.FC<{ category?: CommunityCategory }> = ({ category }) =>
                              </select>
                         </div>
                     )}
-                    {/* FIX: Corrected typo in error message display */}
-                    {error && <p className="text-red-500 text-sm mt-2">Error: {error}</p>}
+                    {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
                     <div className="flex justify-end items-center mt-3 gap-4">
                         <button 
                             onClick={handleGeneratePost} 

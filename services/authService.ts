@@ -47,5 +47,13 @@ export const authService = {
             localStorage.removeItem(TOKEN_KEY); // Token is invalid or expired, remove it
             return null;
         }
-    }
+    },
+
+    changePassword: async (payload: { currentPassword: string, newPassword: string }): Promise<void> => {
+        return apiService('/auth/change-password', 'POST', payload);
+    },
+
+    deleteAccount: async (payload: { password: string }): Promise<void> => {
+        return apiService('/users/me', 'DELETE', payload);
+    },
 };

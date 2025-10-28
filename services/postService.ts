@@ -20,6 +20,9 @@ export const postService = {
     getAllPosts: (): Promise<Post[]> => {
         return apiService<Post[]>('/posts');
     },
+    getPostById: (postId: string): Promise<Post> => {
+        return apiService<Post>(`/posts/${postId}`);
+    },
     getPostsByCategory: (category: CommunityCategory): Promise<Post[]> => {
         return apiService<Post[]>(`/posts/category/${category}`);
     },

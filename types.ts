@@ -1,6 +1,7 @@
 
 
 
+
 export enum Page {
     PROFILE = 'Profile',
     FEED = 'Feed',
@@ -11,6 +12,7 @@ export enum Page {
     KNOWLEDGE_BASE = 'Knowledge Base',
     EVENTS = 'Events',
     FUNDING = 'Funding',
+    SETTINGS = 'Settings',
 }
 
 export enum WritingTool {
@@ -153,4 +155,43 @@ export interface UpdateUserPayload {
     name?: string;
     bio?: string;
     interests?: string[];
+    role?: 'Career Scientist' | 'Civilian Scientist';
+}
+
+// --- Dynamic Content Types ---
+
+export interface UserStats {
+    posts: number;
+    projects: number;
+    reviews: number;
+    citations: number;
+}
+
+export interface DonationTierInfo {
+    id: string;
+    title: string;
+    amount: number;
+    recurring: 'per month' | 'one-time';
+    description: string;
+    isPopular: boolean;
+}
+
+export interface Sponsor {
+    id: string;
+    name: string;
+    logoUrl?: string;
+}
+
+export interface FundingInfo {
+    tiers: DonationTierInfo[];
+    sponsors: Sponsor[];
+}
+
+export interface KnowledgeBaseArticle {
+    id: string;
+    title: string;
+    description: string;
+    icon: string;
+    audience: 'Civilian Scientist' | 'Career Scientist' | 'General';
+    category: string;
 }

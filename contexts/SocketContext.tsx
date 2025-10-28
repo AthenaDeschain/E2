@@ -19,7 +19,8 @@ interface SocketContextType {
     unsubscribe: (type: string, callback: ListenerCallback) => void;
 }
 
-const SocketContext = createContext<SocketContextType | undefined>(undefined);
+// FIX: Export SocketContext to be used in test-utils
+export const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
 export const useSocket = (): SocketContextType => {
     const context = useContext(SocketContext);

@@ -7,6 +7,7 @@ const JARGON_EXAMPLES = [
     { name: 'Physics', text: 'The experiment investigates quantum entanglement using photonic qubits, which requires cryogenic cooling to reduce decoherence.' },
     { name: 'Biology', text: 'CRISPR-Cas9 is a genome editing tool that uses a guide RNA to create a double-strand break at a specific locus in the DNA.' },
     { name: 'Computer Science', text: 'We fine-tuned a large language model using a supervised learning approach with a dataset of domain-specific text to improve its performance on downstream NLP tasks.' },
+    { name: 'Chemistry', text: 'The synthesis involves a nucleophilic substitution reaction, where an electron-rich nucleophile attacks an electrophilic carbon atom, displacing a leaving group.' },
 ];
 
 const JargonBuster: React.FC = () => {
