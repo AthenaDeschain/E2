@@ -1,13 +1,10 @@
+
 // This service now exclusively interacts with a live backend API.
 // The mock logic has been removed as part of the transition to production.
 
-// Check if the app is running on a local development server.
-const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname.startsWith('127.');
-
-// Use an environment variable if provided. Otherwise, use '/api' prefix for local development
-// to support proxying, and use no prefix for production environments (like Cloud Run)
-// where the API is expected to be served from the root.
-const API_BASE_URL = process.env.API_URL || (isLocalhost ? '/api' : '');
+// The API base URL is now consistently '/api' because the Node server
+// will serve both the frontend static files and the API routes from the same origin.
+const API_BASE_URL = '/api';
 
 
 const apiService = async <T>(

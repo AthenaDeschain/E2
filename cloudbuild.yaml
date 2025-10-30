@@ -1,0 +1,52 @@
+# This file is used by Google Cloud Build to automatically build and deploy the application to Cloud Run.
+
+steps:
+  # 1. Install dependencies
+  # This step uses the official npm Cloud Builder to install all required packages.
+  - name: 'gcr.io/cloud-builders/npm'
+    args: ['install']
+    id: 'npm-install'
+
+  # 2. Build the production application
+  # This step runs the 'build' script defined in package.json, which compiles
+  # both the frontend (Vite) and backend (TypeScript) into the 'dist' directory.
+  - name: 'gcr.io/cloud-builders/npm'
+    args: ['run', 'build']
+    id: 'npm-build'
+    waitFor: ['npm-install']
+
+  # 3. Deploy to Cloud Run
+  # This step uses the gcloud Cloud Builder to deploy the application.
+  # It uses the source code in the current directory, which now includes the 'dist' folder.
+  # Cloud Run's buildpacks will automatically detect the Node.js application and use 'npm start'.
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'eureka-squared' # The name of the Cloud Run service.
+      - '--source'
+      - '.' # Deploy from the current directory.
+      - '--region'
+      - 'us-central1' # Specify the deployment region.
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated' # Allow public access to the web app.
+      - '--port'
+      - '8080' # The port the server listens on (defined in server/index.ts).
+      - '--set-env-vars'
+      - 'JWT_SECRET=$$JWT_SECRET,GEMINI_API_KEY=$$GEMINI_API_KEY' # Pass secrets to the service.
+    waitFor: ['npm-build']
+    secretEnv: ['JWT_SECRET', 'GEMINI_API_KEY']
+
+# Configure Cloud Build to access secrets from Google Secret Manager.
+# You must have secrets named 'JWT_SECRET' and 'GEMINI_API_KEY' created in your GCP project.
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/JWT_SECRET/versions/latest
+      env: 'JWT_SECRET'
+    - versionName: projects/$PROJECT_ID/secrets/GEMINI_API_KEY/versions/latest
+      env: 'GEMINI_API_KEY'
+
+# Set logging options for the build.
+options:
+  logging: CLOUD_LOGGING_ONLY

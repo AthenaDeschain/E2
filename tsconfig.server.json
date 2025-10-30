@@ -1,0 +1,13 @@
+
+{
+  "compilerOptions": {
+    "composite": true,
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "outDir": "dist/server",
+    "rootDir": "server",
+    "esModuleInterop": true,
+    "strict": true
+  },
+  "include": ["server/**/*.ts"]
+}

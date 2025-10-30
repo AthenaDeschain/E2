@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useRef, ReactNode, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { Post, NewCommentPayload, Notification } from '../types';
@@ -59,6 +60,7 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             // Determine protocol (ws or wss) and construct the URL.
             // This assumes the WebSocket server is running on the same host as the web server.
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            // The Vite dev server will proxy this /ws path
             const socketUrl = `${protocol}//${window.location.host}/ws?token=${token}`;
             
             const socket = new WebSocket(socketUrl);
