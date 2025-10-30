@@ -95,14 +95,16 @@ const LegalContent = {
 const LegalPage: React.FC<LegalPageProps> = ({ type, onBack }) => {
     const { title, content } = LegalContent[type];
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 sm:p-6 lg:p-8">
+        <div className="min-h-screen bg-slate-100 dark:bg-gray-900 bg-gradient-to-br from-white to-slate-100 dark:from-slate-900 dark:to-gray-900 p-4 sm:p-6 lg:p-8">
             <div className="max-w-4xl mx-auto">
-                <button onClick={onBack} className="flex items-center text-sm font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 mb-6">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
-                    Back
-                </button>
-                <div className="bg-white dark:bg-slate-800/50 p-6 sm:p-8 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-6">{title}</h1>
+                 <div className="mb-6">
+                    <button onClick={onBack} className="inline-flex items-center text-sm font-semibold text-slate-600 hover:text-slate-800 dark:text-slate-300 dark:hover:text-white bg-slate-200/50 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-700/50 px-3 py-1 rounded-md transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+                        Back to Sign Up
+                    </button>
+                </div>
+                <div className="bg-white/80 dark:bg-slate-800/50 backdrop-blur-sm p-8 sm:p-10 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700">
+                    <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white mb-8">{title}</h1>
                     <div className="prose prose-slate dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: content }}></div>
                 </div>
             </div>

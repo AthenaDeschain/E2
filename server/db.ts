@@ -1,16 +1,26 @@
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Define __dirname for ES Modules to ensure a consistent path.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Construct a robust path to the database file in the project root.
+// This avoids issues with the Current Working Directory in production environments.
+const dbPath = path.join(__dirname, '..', '..', 'database.db');
 
 export let db: Database<sqlite3.Database, sqlite3.Statement>;
 
 export async function initDb() {
     try {
         db = await open({
-            filename: './database.db',
+            filename: dbPath,
             driver: sqlite3.Database
         });
 
-        console.log('Connected to the SQLite database.');
+        console.log(`Connected to the SQLite database at ${dbPath}.`);
         
         // Use serialize to ensure tables are created in order
         await db.exec('PRAGMA foreign_keys = ON;');
