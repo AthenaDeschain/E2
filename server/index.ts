@@ -3,18 +3,17 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import path from 'path';
+// Fix: __dirname is not available in ES modules. The following lines define it for the current module.
 import { fileURLToPath } from 'url';
 
-import { initDb } from './db.js';
-import apiRouter from './api.js'; // Corrected import path
-import { initWebsocket } from './websocket.js';
+import { initDb } from './db';
+import apiRouter from './api';
+import { initWebsocket } from './websocket';
 import { ZodError } from 'zod';
-import { AppError } from './errors.js';
+import { AppError } from './errors';
 
-// Fix: Define __dirname for ES modules.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 const app = express();
 const port = process.env.PORT || 8080;
 
