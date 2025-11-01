@@ -25,8 +25,12 @@ const Signup: React.FC<SignupProps> = ({ onSwitch, onNavigateToLegal }) => {
         setIsLoading(true);
         try {
             await signup(name, email, password);
-        } catch (err: any) {
-            setError(err.message || 'Failed to sign up.');
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError('Failed to sign up.');
+            }
         } finally {
             setIsLoading(false);
         }

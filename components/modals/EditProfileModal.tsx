@@ -74,8 +74,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onPr
             const updatedUser = await userService.updateProfile(payload);
             addToast('Profile updated successfully!', 'success');
             onProfileUpdated(updatedUser);
-        } catch (err: any) {
-            const errorMessage = err.message || 'Failed to update profile.';
+        } catch (err) {
+            const errorMessage = (err instanceof Error) ? err.message : 'Failed to update profile.';
             setError(errorMessage);
             addToast(errorMessage, 'error');
         } finally {

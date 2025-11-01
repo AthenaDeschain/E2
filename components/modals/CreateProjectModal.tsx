@@ -82,8 +82,8 @@ const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ onClose, onProj
             const newProject = await projectService.createProject(payload);
             addToast('Project created successfully!', 'success');
             onProjectCreated(newProject);
-        } catch (err: any) {
-            const errorMessage = err.message || 'Failed to create project.';
+        } catch (err) {
+            const errorMessage = (err instanceof Error) ? err.message : 'Failed to create project.';
             setError(errorMessage);
             addToast(errorMessage, 'error');
         } finally {

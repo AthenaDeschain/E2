@@ -6,11 +6,11 @@ import path from 'path';
 // Fix: __dirname is not available in ES modules. The following lines define it for the current module.
 import { fileURLToPath } from 'url';
 
-import { connectDB } from './db';
-import apiRouter from './api';
-import { initWebsocket } from './websocket';
+import { connectDB } from './db.js';
+import apiRouter from './api.js';
+import { initWebsocket } from './websocket.js';
 import { ZodError } from 'zod';
-import { AppError } from './errors';
+import { AppError } from './errors.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

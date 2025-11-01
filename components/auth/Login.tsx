@@ -19,8 +19,12 @@ const Login: React.FC<LoginProps> = ({ onSwitch }) => {
         try {
             await login(email, password);
             // The AuthProvider will handle redirecting
-        } catch (err: any) {
-            setError(err.message || 'Failed to log in.');
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError('Failed to log in.');
+            }
         } finally {
             setIsLoading(false);
         }

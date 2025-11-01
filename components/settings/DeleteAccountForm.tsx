@@ -20,8 +20,8 @@ const DeleteAccountForm: React.FC = () => {
             addToast('Account deleted successfully.', 'info');
             // This will trigger a redirect to the auth page in App.tsx
             await logout(); 
-        } catch (err: any) {
-            const errorMessage = err.message || 'Failed to delete account. Please check your password.';
+        } catch (err) {
+            const errorMessage = (err instanceof Error) ? err.message : 'Failed to delete account. Please check your password.';
             setError(errorMessage);
             addToast(errorMessage, 'error');
         } finally {

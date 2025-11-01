@@ -82,8 +82,8 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ onClose, onEventCre
             const newEvent = await eventService.createEvent(payload);
             addToast('Event created successfully!', 'success');
             onEventCreated(newEvent);
-        } catch (err: any) {
-            const errorMessage = err.message || 'Failed to create event.';
+        } catch (err) {
+            const errorMessage = (err instanceof Error) ? err.message : 'Failed to create event.';
             setError(errorMessage);
             addToast(errorMessage, 'error');
         } finally {

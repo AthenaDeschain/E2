@@ -28,8 +28,8 @@ const CreatePost: React.FC<{ category?: CommunityCategory }> = ({ category }) =>
             const response = await draftPostWithAI(content);
             setContent(response.text);
             addToast('AI draft generated!', 'info');
-        } catch (err: any) {
-            const errorMessage = err.message || "Failed to generate post draft.";
+        } catch (err) {
+            const errorMessage = (err instanceof Error) ? err.message : "Failed to generate post draft.";
             setError(errorMessage);
             addToast(errorMessage, 'error');
         } finally {
@@ -45,8 +45,8 @@ const CreatePost: React.FC<{ category?: CommunityCategory }> = ({ category }) =>
             await postService.createPost({ content, category: selectedCategory });
             addToast('Post created successfully!', 'success');
             setContent('');
-        } catch (err: any) {
-            const errorMessage = err.message || 'Failed to create post.';
+        } catch (err) {
+            const errorMessage = (err instanceof Error) ? err.message : 'Failed to create post.';
             setError(errorMessage);
             addToast(errorMessage, 'error');
         } finally {

@@ -1,20 +1,20 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import mongoose from 'mongoose';
-import { authenticate, createToken } from './auth';
+import { authenticate, createToken } from './auth.js';
 import { v4 as uuidv4 } from 'uuid';
-import { CommunityCategory, CreateProjectPayload, UpdateUserPayload, CreateEventPayload, UserStats, User } from '../src/types';
-import { broadcast } from './websocket';
+import { CommunityCategory, CreateProjectPayload, UpdateUserPayload, CreateEventPayload, UserStats, User } from '../types';
+import { broadcast } from './websocket.js';
 import { GoogleGenAI, Type } from "@google/genai";
-import { AppError } from './errors';
+import { AppError } from './errors.js';
 
 // Model Imports
-import { UserModel } from './models/User';
-import { PostModel } from './models/Post';
-import { CommentModel } from './models/Comment';
-import { ProjectModel } from './models/Project';
-import { NotificationModel } from './models/Notification';
-import { EventModel } from './models/Event';
+import { UserModel } from './models/User.js';
+import { PostModel } from './models/Post.js';
+import { CommentModel } from './models/Comment.js';
+import { ProjectModel } from './models/Project.js';
+import { NotificationModel } from './models/Notification.js';
+import { EventModel } from './models/Event.js';
 
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -418,7 +418,7 @@ const geminiHandler = (model: string, instruction: string, schema?: any) => asyn
         model, contents: prompt,
         config: { systemInstruction: instruction, ...(schema && { responseMimeType: "application/json", responseSchema: schema })},
     });
-    res.json({ text: response.text.trim() });
+    res.json({ text: response.text?.trim() ?? '' });
 });
 
 router.post('/gemini/research', authenticate, geminiHandler('gemini-2.5-flash', 'You are a research assistant. Find and summarize relevant academic papers and citations for the given topic.'));
@@ -428,14 +428,14 @@ router.post('/gemini/language', authenticate, asyncHandler(async(req, res) => {
     const { text, audience } = req.body;
     const instruction = `You are an expert scientific editor. Refine the following text to improve its clarity, tone, and impact for a ${audience} audience.`;
     const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: text, config: { systemInstruction: instruction }});
-    res.json({ text: response.text });
+    res.json({ text: response.text?.trim() ?? '' });
 }));
 router.post('/gemini/review', authenticate, asyncHandler(async(req, res) => {
     if (!ai) throw new AppError('AI features are currently unavailable.', 503);
     const { text, audience } = req.body;
     const instruction = `You are an expert peer reviewer for a scientific journal. Provide a constructive, critical review of the following draft, targeting an ${audience} audience.`;
     const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: text, config: { systemInstruction: instruction }});
-    res.json({ text: response.text });
+    res.json({ text: response.text?.trim() ?? '' });
 }));
 router.post('/gemini/refine-idea', authenticate, geminiHandler('gemini-2.5-flash', 'You are a research advisor. Help refine the following rough idea into a focused, clear, and feasible research concept.'));
 router.post('/gemini/create-outline', authenticate, geminiHandler('gemini-2.5-flash', 'You are a writing assistant. Create a logical and comprehensive outline for a scientific paper based on the provided idea.'));
@@ -456,8 +456,13 @@ router.post('/gemini/jargon-buster', authenticate, asyncHandler(async(req, res) 
             }
         }
     });
-    // The response is already a JSON string, so we can parse it directly
-    res.json(JSON.parse(response.text));
+    try {
+        const parsed = JSON.parse(response.text ?? '[]');
+        res.json(parsed);
+    } catch (e) {
+        console.error("Failed to parse Gemini JSON response:", response.text, e);
+        throw new AppError("The AI returned a response in an unexpected format. Please try again.", 500);
+    }
 }));
 
 export default router;

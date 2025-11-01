@@ -113,8 +113,12 @@ const Workbench: React.FC = () => {
         try {
             const response = await apiCall;
             setResult(response);
-        } catch (err: any) {
-            setError(err.message || 'An unexpected error occurred.');
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError('An unexpected error occurred.');
+            }
         } finally {
             setIsLoading(false);
         }

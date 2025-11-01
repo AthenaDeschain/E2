@@ -61,8 +61,9 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ onClose }) => {
             setUser(updatedUser);
             addToast('Welcome to Eureka²!', 'success');
             onClose();
-        } catch (error: any) {
-            addToast(error.message || 'Failed to save profile.', 'error');
+        } catch (error) {
+            const message = (error instanceof Error) ? error.message : 'Failed to save profile.';
+            addToast(message, 'error');
         } finally {
             setIsLoading(false);
         }

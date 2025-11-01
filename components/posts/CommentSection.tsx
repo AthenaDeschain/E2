@@ -111,8 +111,9 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, onCommentAdded 
             await commentService.addCommentToPost(postId, newComment);
             setNewComment('');
             addToast('Comment posted!', 'success');
-        } catch (err: any) {
-            addToast(err.message || "Failed to post comment.", 'error');
+        } catch (err) {
+            const message = (err instanceof Error) ? err.message : "Failed to post comment.";
+            addToast(message, 'error');
         } finally {
             setIsSubmitting(false);
         }

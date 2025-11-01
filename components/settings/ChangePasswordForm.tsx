@@ -29,8 +29,8 @@ const ChangePasswordForm: React.FC = () => {
             setCurrentPassword('');
             setNewPassword('');
             setConfirmPassword('');
-        } catch (err: any) {
-            const errorMessage = err.message || 'Failed to change password.';
+        } catch (err) {
+            const errorMessage = (err instanceof Error) ? err.message : 'Failed to change password.';
             setError(errorMessage);
             addToast(errorMessage, 'error');
         } finally {
