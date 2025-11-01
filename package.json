@@ -59,10 +59,9 @@
     ]
   },
   "overrides": {
-    "glob": "^10.4.1",
-    "rimraf": "^5.0.7",
     "are-we-there-yet": "4.0.2",
     "gauge": "5.0.2",
-    "npmlog": "7.0.1"
+    "npmlog": "7.0.1",
+    "node-domexception": "1.0.0"
   }
 }
