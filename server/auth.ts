@@ -1,10 +1,8 @@
-import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
-import { db } from './db';
+import { UserModel } from './models/User';
 import { User } from '../src/types';
 
-const SALT_ROUNDS = 10;
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
 if (!JWT_SECRET) {
@@ -22,15 +20,7 @@ declare global {
     }
 }
 
-export const hashPassword = (password: string): Promise<string> => {
-    return bcrypt.hash(password, SALT_ROUNDS);
-};
-
-export const comparePassword = (password: string, hash: string): Promise<boolean> => {
-    return bcrypt.compare(password, hash);
-};
-
-export const createToken = (user: User): string => {
+export const createToken = (user: { id: string, email: string }): string => {
     return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
 };
 
@@ -45,17 +35,13 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
-        const user = await db.get<User>('SELECT id, name, email, handle, avatarUrl, role, bio FROM users WHERE id = ?', decoded.id);
+        const user = await UserModel.findById(decoded.id);
         
         if (!user) {
             return res.status(401).json({ message: 'Invalid token. User not found.' });
         }
         
-        // Fetch and attach user interests to ensure the user object is complete
-        const interests = await db.all<{interest: string}[]>('SELECT interest FROM user_interests WHERE user_id = ?', user.id);
-        user.interests = interests.map(i => i.interest);
-
-        req.user = user;
+        req.user = user.toJSON() as User;
         next();
     } catch (error) {
         return res.status(401).json({ message: 'Invalid token.' });

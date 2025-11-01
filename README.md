@@ -36,7 +36,7 @@ At its heart, Eureka² leverages powerful AI tools, powered by the **Google Gemi
 
 ## 🚀 Key Features
 
--   **Persistent Backend**: All user data, posts, projects, and interactions are stored in a persistent SQLite database.
+-   **Persistent Backend**: All user data, posts, projects, and interactions are stored in a persistent MongoDB database.
 -   **Real-time Interaction**: Live updates for new posts, comments, and notifications are pushed to clients via WebSockets.
 -   **AI-Powered Writing Tools**: A full suite of tools including the Writing Workbench, Guided Writing, and Jargon Buster, all powered by the Google Gemini API.
 -   **Secure Authentication**: Robust user authentication using JWTs and hashed passwords.
@@ -48,7 +48,7 @@ At its heart, Eureka² leverages powerful AI tools, powered by the **Google Gemi
 
 -   **Frontend**: [React](https://reactjs.org/), [TypeScript](https://www.typescriptlang.org/), [Vite](https://vitejs.dev/), [Tailwind CSS](https://tailwindcss.com/)
 -   **Backend**: [Node.js](https://nodejs.org/), [Express](https://expressjs.com/), [TypeScript](https://www.typescriptlang.org/)
--   **Database**: [SQLite](https://www.sqlite.org/index.html)
+-   **Database**: [MongoDB](https://www.mongodb.com/) with [Mongoose](https://mongoosejs.com/)
 -   **Real-time**: [WebSockets](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API)
 -   **AI**: [Google Gemini API](https://ai.google.dev/)
 -   **Testing**: [Jest](https://jestjs.io/) & [React Testing Library](https://testing-library.com/)
@@ -60,6 +60,7 @@ At its heart, Eureka² leverages powerful AI tools, powered by the **Google Gemi
 ### Prerequisites
 
 -   [Node.js](https://nodejs.org/) (version 18 or later recommended)
+-   [MongoDB](https://www.mongodb.com/try/download/community) instance (local or cloud-hosted, e.g., MongoDB Atlas)
 -   `npm` or another package manager like `yarn`
 
 ### Installation & Setup
@@ -79,14 +80,14 @@ At its heart, Eureka² leverages powerful AI tools, powered by the **Google Gemi
     ```sh
     cp .env.example .env
     ```
-    Now, open the `.env` file and fill in your secrets, especially your `JWT_SECRET` and `GEMINI_API_KEY`.
+    Now, open the `.env` file and fill in your secrets, especially your `MONGODB_URI`, `JWT_SECRET`, and `GEMINI_API_KEY`.
 
 ### Running Locally
 
 You need to run two processes in separate terminals: the backend server and the frontend dev server.
 
 1.  **Terminal 1: Start the Backend Server**
-    This command compiles the TypeScript server and starts it. It will also create and initialize the `database.db` file if it doesn't exist.
+    This command compiles the TypeScript server and starts it. It will connect to the MongoDB instance specified in your `.env` file.
     ```sh
     npm run build:backend && npm start
     ```
@@ -109,9 +110,10 @@ The project is a monorepo-style full-stack application with a clear separation b
 /
 ├── dist/                   # Compiled output (from TypeScript & Vite)
 ├── server/                 # Backend source code (Node.js, Express)
-│   ├── api/                # API route definitions
+│   ├── api.ts              # API route definitions
+│   ├── models/             # Mongoose schema definitions
 │   ├── index.ts            # Server entry point
-│   ├── db.ts               # Database initialization and schema
+│   ├── db.ts               # Database connection logic
 │   └── ...
 ├── src/                    # Frontend source code (React)
 │   ├── components/         # Reusable React components
@@ -127,8 +129,8 @@ The project is a monorepo-style full-stack application with a clear separation b
 
 ## 🏛️ Architectural Decisions
 
+-   **MERN Stack**: The project uses the MERN stack. MongoDB was chosen for its flexibility and scalability, and Mongoose provides a powerful schema-based solution for modeling application data.
 -   **Self-Contained Full-Stack**: The backend and frontend are in the same project. The Express server is responsible for serving both the API and the static frontend files, simplifying deployment.
--   **Persistent Storage**: SQLite was chosen for its simplicity and file-based nature, making the project truly self-contained without requiring a separate database server.
 -   **Secure by Default**: All sensitive routes are protected by JWT authentication middleware. Passwords are never stored in plain text, using `bcrypt` for hashing. Environment variables are used for all secrets.
 -   **Type-Safe API**: `zod` is used for backend input validation, ensuring data integrity and providing clear error messages before data hits the database.
 -   **Real-time Functionality**: WebSockets provide a live, interactive user experience. The `websocket.ts` service on the backend offers a simple `broadcast` function that can be called from any API route to push updates to clients.
@@ -153,5 +155,6 @@ The project uses Jest and React Testing Library for frontend testing.
 The following environment variables are required to run the backend. They should be placed in a `.env` file in the project root for local development.
 
 -   `PORT`: The port for the backend server to listen on. Defaults to `8080`.
+-   `MONGODB_URI`: The connection string for your MongoDB database (e.g., `mongodb://localhost:27017/eureka`).
 -   `JWT_SECRET`: A long, random, secret string used for signing authentication tokens.
 -   `GEMINI_API_KEY`: Your API key for the Google Gemini service. AI features will be disabled if this is not provided.

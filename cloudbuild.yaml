@@ -2,15 +2,16 @@
 
 steps:
   # 1. Install dependencies
-  # This step uses the official npm Cloud Builder to install all required packages.
-  - name: 'gcr.io/cloud-builders/npm'
+  # This step uses the official Node.js 20 image to install all required packages.
+  - name: 'node:20'
+    entrypoint: 'npm'
     args: ['install']
     id: 'npm-install'
 
   # 2. Build the production application
-  # This step runs the 'build' script defined in package.json, which compiles
-  # both the frontend (Vite) and backend (TypeScript) into the 'dist' directory.
-  - name: 'gcr.io/cloud-builders/npm'
+  # This step runs the 'build' script defined in package.json.
+  - name: 'node:20'
+    entrypoint: 'npm'
     args: ['run', 'build']
     id: 'npm-build'
     waitFor: ['npm-install']

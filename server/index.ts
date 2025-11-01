@@ -6,7 +6,7 @@ import path from 'path';
 // Fix: __dirname is not available in ES modules. The following lines define it for the current module.
 import { fileURLToPath } from 'url';
 
-import { initDb } from './db';
+import { connectDB } from './db';
 import apiRouter from './api';
 import { initWebsocket } from './websocket';
 import { ZodError } from 'zod';
@@ -18,8 +18,8 @@ const app = express();
 const port = process.env.PORT || 8080;
 
 async function main() {
-    // Initialize Database
-    await initDb();
+    // Connect to Database
+    await connectDB();
 
     // --- Middleware ---
     app.use(cors());
@@ -53,7 +53,7 @@ async function main() {
             return res.status(400).json({ message: 'Validation failed for one or more fields.', errors: err.errors });
         }
         
-        if (err.message?.includes('UNIQUE constraint failed')) {
+        if (err.code === 11000) {
              return res.status(409).json({ message: 'A record with the provided information already exists. Please use a unique value.' });
         }
         

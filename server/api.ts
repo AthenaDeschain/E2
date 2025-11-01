@@ -1,12 +1,21 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { db } from './db';
-import { authenticate, comparePassword, createToken, hashPassword } from './auth';
+import mongoose from 'mongoose';
+import { authenticate, createToken } from './auth';
 import { v4 as uuidv4 } from 'uuid';
-import { User, Post, Project, CommunityCategory, Comment, Event, Notification, CreateProjectPayload, UpdateUserPayload, CreateEventPayload, UserStats } from '../src/types';
+import { CommunityCategory, CreateProjectPayload, UpdateUserPayload, CreateEventPayload, UserStats, User } from '../src/types';
 import { broadcast } from './websocket';
 import { GoogleGenAI, Type } from "@google/genai";
 import { AppError } from './errors';
+
+// Model Imports
+import { UserModel } from './models/User';
+import { PostModel } from './models/Post';
+import { CommentModel } from './models/Comment';
+import { ProjectModel } from './models/Project';
+import { NotificationModel } from './models/Notification';
+import { EventModel } from './models/Event';
+
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 if (!GEMINI_API_KEY) {
@@ -17,36 +26,25 @@ const ai = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
 
 const router = Router();
 
-// Helper to wrap async routes and catch errors, passing them to the global error handler
 const asyncHandler = (fn: (req: any, res: any, next: any) => Promise<any>) =>
     (req: any, res: any, next: any) => fn(req, res, next).catch(next);
 
 // --- Notification Helper ---
 async function createNotification(recipientId: string, senderId: string, type: 'like' | 'comment' | 'mention' | 'project_invite', content: string, link: string) {
-    if (recipientId === senderId) return; // Don't notify users about their own actions
+    if (recipientId.toString() === senderId.toString()) return;
 
-    const notification: Omit<Notification, 'sender' | 'isRead'> = {
-        id: `notif-${uuidv4()}`,
+    const notificationDoc = await NotificationModel.create({
+        recipient: recipientId,
+        sender: senderId,
         type,
         content,
         link,
-        timestamp: new Date().toISOString(),
-    };
-
-    await db.run(
-        'INSERT INTO notifications (id, recipient_id, sender_id, type, content, link, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        notification.id, recipientId, senderId, type, content, link, notification.timestamp
-    );
-
-    const sender = await db.get<User>('SELECT id, name, handle, avatarUrl FROM users WHERE id = ?', senderId);
-    
-    // The current broadcast sends to all clients. A production system might use user-specific channels.
-    broadcast('new_notification', {
-        ...notification,
-        sender,
-        isRead: false,
-        recipient_id: recipientId // For potential client-side filtering
+        timestamp: new Date()
     });
+    
+    const notification = await NotificationModel.findById(notificationDoc._id).populate('sender', 'id name handle avatarUrl');
+    
+    broadcast('new_notification', notification?.toJSON());
 }
 
 
@@ -59,23 +57,16 @@ const signupSchema = z.object({
 router.post('/auth/signup', asyncHandler(async (req, res) => {
     const { name, email, password } = signupSchema.parse(req.body);
 
-    const password_hash = await hashPassword(password);
-    const newUser: User = {
-        id: `user-${uuidv4()}`,
+    const newUser = await UserModel.create({
         name,
         email,
+        password, // Hashing is handled by the pre-save hook in the model
         handle: name.toLowerCase().replace(/\s/g, '_') + Date.now().toString().slice(-4),
         avatarUrl: `https://i.pravatar.cc/150?u=${email}`,
-        interests: [], // Start with empty interests
-    };
-
-    await db.run(
-        'INSERT INTO users (id, name, email, password_hash, handle, avatarUrl) VALUES (?, ?, ?, ?, ?, ?)',
-        newUser.id, newUser.name, newUser.email, password_hash, newUser.handle, newUser.avatarUrl
-    );
+    });
     
     const token = createToken(newUser);
-    res.status(201).json({ token, user: newUser });
+    res.status(201).json({ token, user: newUser.toJSON() });
 }));
 
 const loginSchema = z.object({
@@ -84,18 +75,14 @@ const loginSchema = z.object({
 });
 router.post('/auth/login', asyncHandler(async (req, res) => {
     const { email, password } = loginSchema.parse(req.body);
-    const user = await db.get('SELECT * FROM users WHERE email = ?', email);
+    const user = await UserModel.findOne({ email }).select('+password');
 
-    if (!user || !(await comparePassword(password, user.password_hash))) {
+    if (!user || !(await user.comparePassword(password))) {
         throw new AppError('Invalid email or password.', 401);
     }
     
-    const { password_hash, ...userPayload } = user;
-    const interests = await db.all<{interest: string}[]>('SELECT interest FROM user_interests WHERE user_id = ?', user.id);
-    const userPayloadWithInterests = { ...userPayload, interests: interests.map(i => i.interest) };
-
-    const token = createToken(userPayloadWithInterests);
-    res.json({ token, user: userPayloadWithInterests });
+    const token = createToken(user);
+    res.json({ token, user: user.toJSON() });
 }));
 
 router.get('/auth/me', authenticate, (req, res) => {
@@ -113,14 +100,14 @@ const changePasswordSchema = z.object({
 router.post('/auth/change-password', authenticate, asyncHandler(async (req, res) => {
     const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
     const userId = req.user!.id;
-    const user = await db.get('SELECT password_hash FROM users WHERE id = ?', userId);
+    const user = await UserModel.findById(userId).select('+password');
 
-    if (!user || !(await comparePassword(currentPassword, user.password_hash))) {
+    if (!user || !(await user.comparePassword(currentPassword))) {
         throw new AppError('Incorrect current password.', 403);
     }
     
-    const newPasswordHash = await hashPassword(newPassword);
-    await db.run('UPDATE users SET password_hash = ? WHERE id = ?', newPasswordHash, userId);
+    user.password = newPassword;
+    await user.save();
     
     res.status(204).send();
 }));
@@ -128,81 +115,86 @@ router.post('/auth/change-password', authenticate, asyncHandler(async (req, res)
 
 // --- User Routes ---
 router.put('/users/me', authenticate, asyncHandler(async (req, res) => {
-    const user = req.user!;
+    const userId = req.user!.id;
     const payload: UpdateUserPayload = req.body;
     
-    user.name = payload.name ?? user.name;
-    user.bio = payload.bio ?? user.bio;
-    user.role = payload.role ?? user.role;
-    
-    await db.run('UPDATE users SET name = ?, bio = ?, role = ? WHERE id = ?',
-        user.name, user.bio, user.role, user.id
-    );
+    const updateData: Partial<UpdateUserPayload> & { interests?: string[] } = {};
+    if (payload.name) updateData.name = payload.name;
+    if (payload.bio) updateData.bio = payload.bio;
+    if (payload.role) updateData.role = payload.role;
+    if (payload.interests) updateData.interests = payload.interests;
 
-    if (payload.interests) {
-        await db.run('DELETE FROM user_interests WHERE user_id = ?', user.id);
-        for (const interest of payload.interests) {
-            await db.run('INSERT INTO user_interests (user_id, interest) VALUES (?, ?)', user.id, interest);
-        }
-    }
+    const updatedUser = await UserModel.findByIdAndUpdate(userId, { $set: updateData }, { new: true });
 
-    const interests = await db.all<{interest: string}[]>('SELECT interest FROM user_interests WHERE user_id = ?', user.id);
-    const updatedUser = { ...user, interests: interests.map(i => i.interest) };
-
-    res.json(updatedUser);
+    if (!updatedUser) throw new AppError('User not found.', 404);
+    res.json(updatedUser.toJSON());
 }));
 
 const deleteAccountSchema = z.object({ password: z.string() });
 router.delete('/users/me', authenticate, asyncHandler(async(req, res) => {
     const { password } = deleteAccountSchema.parse(req.body);
     const userId = req.user!.id;
-    const user = await db.get('SELECT password_hash FROM users WHERE id = ?', userId);
+    const user = await UserModel.findById(userId).select('+password');
 
-    if (!user || !(await comparePassword(password, user.password_hash))) {
+    if (!user || !(await user.comparePassword(password))) {
         throw new AppError('Incorrect password.', 403);
     }
     
-    await db.run('DELETE FROM users WHERE id = ?', userId);
+    await UserModel.findByIdAndDelete(userId);
     res.status(204).send();
 }));
 
 router.get('/users/me/stats', authenticate, asyncHandler(async(req, res) => {
     const userId = req.user!.id;
-    const posts = await db.get<{ count: number }>('SELECT COUNT(*) as count FROM posts WHERE user_id = ?', userId);
-    const projects = await db.get<{ count: number }>('SELECT COUNT(*) as count FROM project_members WHERE user_id = ?', userId);
-    const stats: UserStats = { posts: posts?.count ?? 0, projects: projects?.count ?? 0, reviews: 0, citations: 0 };
+    const postsCount = await PostModel.countDocuments({ author: userId });
+    const projectsCount = await ProjectModel.countDocuments({ 'members.user': userId });
+    const stats: UserStats = { posts: postsCount, projects: projectsCount, reviews: 0, citations: 0 };
     res.json(stats);
 }));
 
 // --- Post & Bookmark Routes ---
-const mapPostData = (postsData: any[]): Post[] => {
-    return postsData.map((p: any) => ({
-        id: p.id,
-        content: p.content,
-        category: p.category,
-        timestamp: p.timestamp,
-        author: { id: p.authorId, name: p.authorName, handle: p.authorHandle, avatarUrl: p.authorAvatarUrl },
-        likes: p.likesCount,
-        comments: p.commentsCount,
-        isLiked: !!p.isLiked,
-        isBookmarked: !!p.isBookmarked,
+const getPostsPipeline = (userId: string, matchClause: object = {}) => {
+    const currentUserId = new mongoose.Types.ObjectId(userId);
+    return [
+      { $match: matchClause },
+      { $sort: { created_at: -1 } },
+      { $lookup: { from: 'users', localField: 'author', foreignField: '_id', as: 'author' } },
+      { $unwind: '$author' },
+      { $lookup: { from: 'comments', localField: '_id', foreignField: 'post', as: 'comments' } },
+      {
+        $addFields: {
+          likesCount: { $size: '$likes' },
+          commentsCount: { $size: '$comments' },
+          isLiked: { $in: [currentUserId, '$likes'] }
+        }
+      },
+      {
+        $project: {
+          id: '$_id', _id: 0, content: 1, category: 1, timestamp: '$created_at',
+          author: { id: '$author._id', name: '$author.name', handle: '$author.handle', avatarUrl: '$author.avatarUrl' },
+          likes: '$likesCount',
+          comments: '$commentsCount',
+          isLiked: 1
+        }
+      }
+    ];
+};
+
+const addBookmarkStatus = async (posts: any[], userId: string) => {
+    const user = await UserModel.findById(userId).select('bookmarks').lean();
+    const bookmarkedIds = new Set(user?.bookmarks?.map(id => id.toString()));
+    return posts.map(post => ({
+        ...post,
+        isBookmarked: bookmarkedIds.has(post.id.toString())
     }));
 };
 
-const POST_DETAILS_QUERY = `
-    SELECT
-        p.id, p.content, p.category, p.created_at AS timestamp,
-        u.id AS authorId, u.name AS authorName, u.handle AS authorHandle, u.avatarUrl AS authorAvatarUrl,
-        (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) AS likesCount,
-        (SELECT COUNT(*) FROM comments WHERE post_id = p.id) AS commentsCount,
-        EXISTS(SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = ?) AS isLiked,
-        EXISTS(SELECT 1 FROM bookmarks WHERE post_id = p.id AND user_id = ?) AS isBookmarked
-    FROM posts p JOIN users u ON p.user_id = u.id`;
-
 router.get('/posts', authenticate, asyncHandler(async (req, res) => {
     const userId = req.user!.id;
-    const postsData = await db.all(`${POST_DETAILS_QUERY} ORDER BY p.created_at DESC`, [userId, userId]);
-    res.json(mapPostData(postsData));
+    const pipeline = getPostsPipeline(userId);
+    const posts = await PostModel.aggregate(pipeline);
+    const postsWithBookmarks = await addBookmarkStatus(posts, userId);
+    res.json(postsWithBookmarks);
 }));
 
 router.get('/posts/category/:category', authenticate, asyncHandler(async (req, res) => {
@@ -211,84 +203,112 @@ router.get('/posts/category/:category', authenticate, asyncHandler(async (req, r
     if (!Object.values(CommunityCategory).includes(category as CommunityCategory)) {
         throw new AppError('Invalid category specified.', 400);
     }
-    const postsData = await db.all(`${POST_DETAILS_QUERY} WHERE p.category = ? ORDER BY p.created_at DESC`, [userId, userId, category]);
-    res.json(mapPostData(postsData));
+    const pipeline = getPostsPipeline(userId, { category });
+    const posts = await PostModel.aggregate(pipeline);
+    const postsWithBookmarks = await addBookmarkStatus(posts, userId);
+    res.json(postsWithBookmarks);
 }));
 
 router.get('/posts/:postId', authenticate, asyncHandler(async(req, res) => {
     const { postId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(postId)) throw new AppError('Invalid Post ID', 400);
     const userId = req.user!.id;
-    const postData = await db.get(`${POST_DETAILS_QUERY} WHERE p.id = ?`, [userId, userId, postId]);
-    if (!postData) throw new AppError('Post not found.', 404);
-    res.json(mapPostData([postData])[0]);
+    const pipeline = getPostsPipeline(userId, { _id: new mongoose.Types.ObjectId(postId) });
+    const posts = await PostModel.aggregate(pipeline);
+    if (posts.length === 0) throw new AppError('Post not found.', 404);
+    const postsWithBookmarks = await addBookmarkStatus(posts, userId);
+    res.json(postsWithBookmarks[0]);
 }));
 
 router.get('/bookmarks', authenticate, asyncHandler(async(req, res) => {
     const userId = req.user!.id;
-    const postsData = await db.all(`
-        ${POST_DETAILS_QUERY}
-        JOIN bookmarks b ON p.id = b.post_id
-        WHERE b.user_id = ?
-        ORDER BY p.created_at DESC
-    `, [userId, userId, userId]);
-    res.json(mapPostData(postsData));
+    const user = await UserModel.findById(userId).select('bookmarks');
+    if (!user) throw new AppError('User not found', 404);
+    const pipeline = getPostsPipeline(userId, { _id: { $in: user.bookmarks } });
+    const posts = await PostModel.aggregate(pipeline);
+    // All returned posts are bookmarked by definition
+    const postsWithBookmarks = posts.map(p => ({ ...p, isBookmarked: true }));
+    res.json(postsWithBookmarks);
 }));
 
 const createPostSchema = z.object({ content: z.string().min(1), category: z.nativeEnum(CommunityCategory) });
 router.post('/posts', authenticate, asyncHandler(async (req, res) => {
     const { content, category } = createPostSchema.parse(req.body);
     const user = req.user!;
-    const newPost: Omit<Post, 'likes' | 'comments' | 'isLiked' | 'isBookmarked'> = {
-        id: `post-${uuidv4()}`, author: user, content, category, timestamp: new Date().toISOString(),
+    const newPostDoc = await PostModel.create({ content, category, author: user.id });
+    const newPost = await PostModel.findById(newPostDoc._id).populate('author');
+
+    if (!newPost) throw new AppError('Failed to create post', 500);
+
+    const postJSON = newPost.toJSON();
+    const responsePayload = {
+        ...postJSON,
+        timestamp: newPost.get('created_at').toISOString(),
+        author: {
+            id: (newPost.author as any).id,
+            name: (newPost.author as any).name,
+            handle: (newPost.author as any).handle,
+            avatarUrl: (newPost.author as any).avatarUrl,
+        },
+        likes: 0,
+        comments: 0,
+        isLiked: false,
+        isBookmarked: false,
     };
-    await db.run('INSERT INTO posts (id, user_id, content, category, created_at) VALUES (?, ?, ?, ?, ?)',
-        newPost.id, user.id, content, category, newPost.timestamp
-    );
-    const fullPost = { ...newPost, likes: 0, comments: 0, isLiked: false, isBookmarked: false };
-    broadcast('new_post', fullPost);
-    res.status(201).json(fullPost);
+    broadcast('new_post', responsePayload);
+    res.status(201).json(responsePayload);
 }));
 
 router.post('/posts/:postId/like', authenticate, asyncHandler(async (req, res) => {
     const postId = req.params.postId;
     const userId = req.user!.id;
-    const isLiked = await db.get('SELECT 1 FROM post_likes WHERE post_id = ? AND user_id = ?', postId, userId);
+    
+    const post = await PostModel.findById(postId);
+    if (!post) throw new AppError('Post not found', 404);
 
-    if (isLiked) {
-        await db.run('DELETE FROM post_likes WHERE post_id = ? AND user_id = ?', postId, userId);
-    } else {
-        await db.run('INSERT INTO post_likes (post_id, user_id) VALUES (?, ?)', postId, userId);
-        const post = await db.get('SELECT user_id FROM posts WHERE id = ?', postId);
-        if (post) await createNotification(post.user_id, userId, 'like', 'liked your post.', `/posts/${postId}`);
+    const isLiked = post.likes.includes(new mongoose.Types.ObjectId(userId));
+    
+    const update = isLiked
+      ? { $pull: { likes: userId } }
+      : { $addToSet: { likes: userId } };
+
+    const updatedPost = await PostModel.findByIdAndUpdate(postId, update, { new: true });
+    
+    if (!isLiked) {
+        await createNotification(post.author.toString(), userId, 'like', 'liked your post.', `/posts/${postId}`);
     }
-    const likes = await db.get('SELECT COUNT(*) as count FROM post_likes WHERE post_id = ?', postId);
-    res.json({ likes: likes.count, isLiked: !isLiked });
+
+    res.json({ likes: updatedPost?.likes.length ?? 0, isLiked: !isLiked });
 }));
 
 router.post('/posts/:postId/bookmark', authenticate, asyncHandler(async (req, res) => {
     const postId = req.params.postId;
     const userId = req.user!.id;
-    const isBookmarked = await db.get('SELECT 1 FROM bookmarks WHERE post_id = ? AND user_id = ?', postId, userId);
+    
+    const user = await UserModel.findById(userId);
+    if (!user) throw new AppError('User not found', 404);
 
-    if (isBookmarked) {
-        await db.run('DELETE FROM bookmarks WHERE post_id = ? AND user_id = ?', postId, userId);
-    } else {
-        await db.run('INSERT INTO bookmarks (post_id, user_id) VALUES (?, ?)', postId, userId);
-    }
+    const isBookmarked = user.bookmarks?.includes(new mongoose.Types.ObjectId(postId));
+
+    const update = isBookmarked
+      ? { $pull: { bookmarks: postId } }
+      : { $addToSet: { bookmarks: postId } };
+      
+    await UserModel.findByIdAndUpdate(userId, update);
+
     res.json({ isBookmarked: !isBookmarked });
 }));
 
+
 // --- Comment Routes ---
 router.get('/posts/:postId/comments', authenticate, asyncHandler(async (req, res) => {
-    const comments = await db.all(`
-        SELECT c.*, u.name as authorName, u.handle as authorHandle, u.avatarUrl as authorAvatarUrl
-        FROM comments c JOIN users u ON c.user_id = u.id
-        WHERE c.post_id = ? ORDER BY c.created_at ASC
-    `, req.params.postId);
+    const comments = await CommentModel.find({ post: req.params.postId })
+      .populate('author', 'id name handle avatarUrl')
+      .sort({ created_at: 'asc' });
 
-    res.json(comments.map((c: any) => ({
-        id: c.id, content: c.content, timestamp: c.created_at,
-        author: { id: c.user_id, name: c.authorName, handle: c.authorHandle, avatarUrl: c.authorAvatarUrl }
+    res.json(comments.map(c => ({
+        ...c.toJSON(),
+        timestamp: c.get('created_at').toISOString()
     })));
 }));
 
@@ -296,100 +316,79 @@ router.post('/posts/:postId/comments', authenticate, asyncHandler(async (req, re
     const postId = req.params.postId;
     const content = req.body.content;
     const user = req.user!;
-    const newComment: Comment = { id: `comment-${uuidv4()}`, author: user, content, timestamp: new Date().toISOString() };
-    await db.run('INSERT INTO comments (id, post_id, user_id, content, created_at) VALUES (?, ?, ?, ?, ?)',
-        newComment.id, postId, user.id, content, newComment.timestamp
-    );
     
-    const postOwner = await db.get('SELECT user_id FROM posts WHERE id = ?', postId);
-    if (postOwner) await createNotification(postOwner.user_id, user.id, 'comment', 'commented on your post.', `/posts/${postId}`);
+    const newCommentDoc = await CommentModel.create({ post: postId, author: user.id, content });
+    const newComment = await CommentModel.findById(newCommentDoc._id).populate('author', 'id name handle avatarUrl');
+    
+    if (!newComment) throw new AppError('Failed to create comment', 500);
 
-    broadcast('new_comment', { postId, comment: newComment });
-    res.status(201).json(newComment);
+    const post = await PostModel.findById(postId);
+    if (post) await createNotification(post.author.toString(), user.id, 'comment', 'commented on your post.', `/posts/${postId}`);
+
+    const payload = {
+        postId,
+        comment: {
+            ...newComment.toJSON(),
+            timestamp: newComment.get('created_at').toISOString()
+        }
+    };
+    broadcast('new_comment', payload);
+    res.status(201).json(payload.comment);
 }));
 
 // --- Project Routes ---
 router.post('/projects', authenticate, asyncHandler(async (req, res) => {
     const payload: CreateProjectPayload = req.body;
     const user = req.user!;
-    const newProject: Project = {
-        id: `proj-${uuidv4()}`, title: payload.title, description: payload.description, tags: payload.tags,
-        seekingCivilianScientists: payload.seekingCivilianScientists, isSeekingFunding: payload.isSeekingFunding,
-        status: 'Recruiting', members: [{...user, projectRole: 'Lead'}], progress: 0,
-    };
+    const newProject = await ProjectModel.create({
+        ...payload,
+        status: 'Recruiting',
+        progress: 0,
+        members: [{ user: user.id, projectRole: 'Lead' }],
+    });
     
-    await db.run('INSERT INTO projects (id, title, description, status, isSeekingFunding, seekingCivilianScientists, progress) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        newProject.id, newProject.title, newProject.description, newProject.status, newProject.isSeekingFunding, newProject.seekingCivilianScientists, newProject.progress
-    );
-    await db.run('INSERT INTO project_members (project_id, user_id, projectRole) VALUES (?, ?, ?)', newProject.id, user.id, 'Lead');
-    for (const tag of newProject.tags) {
-        await db.run('INSERT INTO project_tags (project_id, tag) VALUES (?, ?)', newProject.id, tag);
-    }
-    res.status(201).json(newProject);
+    const projectWithMember = await ProjectModel.findById(newProject._id).populate('members.user');
+    res.status(201).json(projectWithMember?.toJSON());
 }));
 
 router.get('/projects/mine', authenticate, asyncHandler(async(req, res) => {
     const userId = req.user!.id;
-    const projectsData = await db.all(`
-        SELECT p.* FROM projects p JOIN project_members pm ON p.id = pm.project_id
-        WHERE pm.user_id = ? ORDER BY p.id DESC
-    `, userId);
+    const projects = await ProjectModel.find({ 'members.user': userId })
+        .populate('members.user', 'id name handle avatarUrl')
+        .sort({ _id: -1 });
 
-    if (projectsData.length === 0) return res.json([]);
-    const projectIds = projectsData.map(p => p.id);
-    const placeholders = projectIds.map(() => '?').join(',');
-
-    const membersData = await db.all(`
-        SELECT u.id, u.name, u.handle, u.avatarUrl, pm.project_id, pm.projectRole FROM users u
-        JOIN project_members pm ON u.id = pm.user_id WHERE pm.project_id IN (${placeholders})
-    `, projectIds);
-    const tagsData = await db.all(`SELECT project_id, tag FROM project_tags WHERE project_id IN (${placeholders})`, projectIds);
-
-    const membersByProjectId = membersData.reduce((acc, member) => {
-        (acc[member.project_id] = acc[member.project_id] || []).push({
-            id: member.id, name: member.name, handle: member.handle, avatarUrl: member.avatarUrl, projectRole: member.projectRole,
-        });
-        return acc;
-    }, {});
-    const tagsByProjectId = tagsData.reduce((acc, tag) => {
-        (acc[tag.project_id] = acc[tag.project_id] || []).push(tag.tag);
-        return acc;
-    }, {});
-
-    const projects = projectsData.map(p => ({
-        ...p, isSeekingFunding: !!p.isSeekingFunding, seekingCivilianScientists: !!p.seekingCivilianScientists,
-        members: membersByProjectId[p.id] || [], tags: tagsByProjectId[p.id] || [],
-    }));
-    res.json(projects);
+    res.json(projects.map(p => p.toJSON()));
 }));
 
 // --- Notification Routes ---
 router.get('/notifications', authenticate, asyncHandler(async(req, res) => {
     const userId = req.user!.id;
-    const notifications = await db.all(`
-        SELECT n.*, u.name as senderName, u.handle as senderHandle, u.avatarUrl as senderAvatarUrl 
-        FROM notifications n JOIN users u ON n.sender_id = u.id
-        WHERE n.recipient_id = ? ORDER BY n.timestamp DESC LIMIT 20
-    `, userId);
-    res.json(notifications.map((n: any) => ({
-        id: n.id, type: n.type, content: n.content, timestamp: n.timestamp, isRead: !!n.isRead, link: n.link,
-        sender: { id: n.sender_id, name: n.senderName, handle: n.senderHandle, avatarUrl: n.senderAvatarUrl }
-    })));
+    const notifications = await NotificationModel.find({ recipient: userId })
+        .populate('sender', 'id name handle avatarUrl')
+        .sort({ timestamp: -1 })
+        .limit(20);
+    res.json(notifications.map(n => n.toJSON()));
 }));
 
 router.post('/notifications/read-all', authenticate, asyncHandler(async(req, res) => {
-    await db.run('UPDATE notifications SET isRead = 1 WHERE recipient_id = ?', req.user!.id);
+    await NotificationModel.updateMany({ recipient: req.user!.id, isRead: false }, { isRead: true });
     res.status(204).send();
 }));
 
 
 // --- Misc Routes (Events, KB, Funding, Reports) ---
-router.get('/events', authenticate, (req, res) => res.json([]));
-router.post('/events', authenticate, (req, res) => {
+router.get('/events', authenticate, asyncHandler(async (req, res) => {
+    const events = await EventModel.find().sort({ date: 'asc' });
+    res.json(events.map(e => e.toJSON()));
+}));
+
+router.post('/events', authenticate, asyncHandler(async (req, res) => {
     const payload: CreateEventPayload = req.body;
-    const newEvent: Event = { id: `event-${uuidv4()}`, ...payload, attendees: [] };
-    res.status(201).json(newEvent);
-});
+    const user = req.user!;
+    const newEvent = await EventModel.create({ ...payload, creator: user.id });
+    res.status(201).json(newEvent.toJSON());
+}));
+
 router.get('/knowledge-base/articles', authenticate, (req, res) => res.json([
     { id: 'kb-1', title: 'Getting Started with Research', description: 'A guide to forming a hypothesis.', icon: '🤔', audience: 'Civilian Scientist', category: 'Guides' },
     { id: 'kb-2', title: 'Open Source Lab Tools', description: 'Find software for your experiments.', icon: '💻', audience: 'Career Scientist', category: 'Tools' },
@@ -408,7 +407,7 @@ router.post('/reports', authenticate, (req, res) => {
     res.status(204).send();
 });
 
-// --- Gemini Proxy Routes ---
+// --- Gemini Proxy Routes (Unchanged) ---
 const geminiHandler = (model: string, instruction: string, schema?: any) => asyncHandler(async (req, res) => {
     if (!ai) throw new AppError('AI features are currently unavailable.', 503);
     const { text, topic, idea, abstract } = req.body;
