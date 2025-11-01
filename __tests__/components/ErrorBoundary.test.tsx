@@ -1,16 +1,15 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import ErrorBoundary from '../../components/ErrorBoundary';
-// FIX: Import Jest globals to resolve TypeScript errors.
-import { describe, it, expect, jest, beforeAll, afterAll } from '@jest/globals';
+import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 
 // Mock console.error to prevent logging expected errors during tests
 beforeAll(() => {
-  jest.spyOn(console, 'error').mockImplementation(() => {});
+  vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
 afterAll(() => {
-  (console.error as jest.Mock).mockRestore();
+  vi.mocked(console.error).mockRestore();
 });
 
 

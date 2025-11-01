@@ -3,12 +3,11 @@ import { render, screen, fireEvent, waitFor } from '../../../test-utils';
 import Login from '../../../components/auth/Login';
 import { authService } from '../../../services/authService';
 import { User } from '../../../types';
-// FIX: Import Jest globals to resolve TypeScript errors.
-import { describe, it, expect, jest } from '@jest/globals';
+import { describe, it, expect, vi } from 'vitest';
 
 // Mock the authService to control its behavior in tests
-jest.mock('../../../services/authService');
-const mockedAuthService = authService as jest.Mocked<typeof authService>;
+vi.mock('../../../services/authService');
+const mockedAuthService = vi.mocked(authService);
 
 describe('Login Component', () => {
   it('renders the login form correctly', () => {

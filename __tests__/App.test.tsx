@@ -2,13 +2,12 @@ import React from 'react';
 import { render, screen, fireEvent } from '../test-utils';
 import App from '../App';
 import { User } from '../types';
-// FIX: Import Jest globals to resolve TypeScript errors.
-import { describe, it, expect, jest } from '@jest/globals';
+import { describe, it, expect, vi } from 'vitest';
 
 // Mock child components to keep tests focused on App's logic and routing
-jest.mock('../pages/AuthPage', () => () => <div>Auth Page</div>);
-jest.mock('../components/GlobalFeed', () => () => <div>Global Feed</div>);
-jest.mock('../components/Projects', () => () => <div>My Projects Page</div>);
+vi.mock('../pages/AuthPage', () => ({ default: () => <div>Auth Page</div> }));
+vi.mock('../components/GlobalFeed', () => ({ default: () => <div>Global Feed</div> }));
+vi.mock('../components/Projects', () => ({ default: () => <div>My Projects Page</div> }));
 
 const mockUser: User = {
   id: 'devuser-123',

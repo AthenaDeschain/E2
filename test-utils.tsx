@@ -4,29 +4,27 @@ import { AuthContext, AuthContextType } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { SocketContext } from './contexts/SocketContext';
 import { User } from './types';
-// FIX: Import jest for mock functions
-import { jest } from '@jest/globals';
+import { vi } from 'vitest';
 
 // Mock Socket Provider for a stable test environment
 const MockSocketProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
     const value = {
-        subscribe: jest.fn(),
-        unsubscribe: jest.fn(),
+        subscribe: vi.fn(),
+        unsubscribe: vi.fn(),
     };
     return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;
 };
 
 // Custom Auth Provider that allows mocking user state for tests
 const createMockAuthProvider = (user: User | null, isLoading: boolean) => {
-    // FIX: Return a named FC to help with type inference and fix children prop error
     const MockAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         const value: AuthContextType = {
             user,
             isLoading,
-            login: jest.fn().mockResolvedValue(undefined),
-            signup: jest.fn().mockResolvedValue(undefined),
-            logout: jest.fn().mockResolvedValue(undefined),
-            setUser: jest.fn(),
+            login: vi.fn().mockResolvedValue(undefined),
+            signup: vi.fn().mockResolvedValue(undefined),
+            logout: vi.fn().mockResolvedValue(undefined),
+            setUser: vi.fn(),
         };
         return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
     };

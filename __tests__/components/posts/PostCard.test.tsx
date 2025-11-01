@@ -3,15 +3,14 @@ import { render, screen, fireEvent, waitFor } from '../../../test-utils';
 import { PostCard } from '../../../components/posts/PostCard';
 import { Post, CommunityCategory, User } from '../../../types';
 import { postService } from '../../../services/postService';
-// FIX: Import Jest globals to resolve TypeScript errors.
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock the postService to isolate the component
-jest.mock('../../../services/postService');
-const mockedPostService = postService as jest.Mocked<typeof postService>;
+vi.mock('../../../services/postService');
+const mockedPostService = vi.mocked(postService);
 
 // Mock child components to keep tests focused on PostCard's logic
-jest.mock('../../../components/posts/CommentSection', () => () => <div>Comment Section</div>);
+vi.mock('../../../components/posts/CommentSection', () => ({ default: () => <div>Comment Section</div> }));
 
 const mockUser: User = {
   id: 'user-1',
@@ -36,7 +35,7 @@ const mockPost: Post = {
 describe('PostCard Component', () => {
   beforeEach(() => {
     // Reset mocks before each test to ensure test isolation
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('renders post content, author, and stats correctly', () => {
